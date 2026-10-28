@@ -319,31 +319,36 @@
   function extrasHtml() {
     return `<h2 class="section-title">Außerhalb der Apps</h2>
       <div class="tiles">
-        <div class="tile"><div class="label">Tägliches Social-Media-Video</div><div class="value" id="video-status">…</div><div class="hint" id="video-hint"></div></div>
+        <a class="tile accent-wort" href="#social" style="text-decoration:none"><div class="label">Social Media heute · Wort</div><div class="value" id="soc-wort">…</div><div class="hint" id="soc-wort-hint"></div></a>
+        <a class="tile accent-zitat" href="#social" style="text-decoration:none"><div class="label">Social Media heute · Zitat</div><div class="value" id="soc-zitat">…</div><div class="hint" id="soc-zitat-hint"></div></a>
+        <a class="tile" href="#play" style="text-decoration:none"><div class="label">Google Play · Installationen gesamt</div><div class="value" id="play-total">…</div><div class="hint" id="play-hint"></div></a>
       </div>
-      <div class="note-box" style="margin-top:12px">
-        <strong>Downloads aus dem Play Store</strong> stehen nicht in deinen Datenbanken – Google zählt sie nur in der
-        <a href="https://play.google.com/console" target="_blank" rel="noopener">Google Play Console</a> (Statistiken).
-        Die Zahlen hier zählen Nutzer mit Konto; Gäste ohne Konto werden nicht erfasst.
-      </div>`;
+      <p class="muted small" style="margin-top:10px">Nutzerzahlen zählen Konten; Gäste ohne Konto werden nicht erfasst. Downloads stehen unter Google Play.</p>`;
   }
 
   async function loadVideoStatus() {
-    const el = $("#video-status");
+    for (const p of ["wort", "zitat"]) {
+      const el = $(`#soc-${p}`);
+      if (!el) continue;
+      if (!loggedIn(p)) { el.textContent = "–"; continue; }
+      const s = await socialToday(p);
+      el.textContent = s.text;
+      el.parentElement.classList.toggle("warn", s.warn);
+      $(`#soc-${p}-hint`).textContent = s.hint;
+    }
+    const el = $("#play-total");
     if (!el) return;
     try {
-      const res = await fetch(`${PROJECTS.zitat.url}/storage/v1/object/public/social-videos/${todayIso()}.posted.json?t=${Date.now()}`);
-      if (res.ok) {
-        const info = await res.json();
-        const n = Object.keys(info.posts || {}).length;
-        el.textContent = "Heute gepostet ✓";
-        $("#video-hint").innerHTML = `${n} Kanäle · <a href="${esc(info.video)}" target="_blank" rel="noopener">Video ansehen</a>`;
-      } else {
-        el.textContent = "Heute noch nicht";
-        $("#video-hint").textContent = "Wird um 8:00 Uhr veröffentlicht";
-      }
+      const rows = await api("zitat", `play_stats?select=package,day,total_user_installs&total_user_installs=not.is.null&order=day.desc&limit=20`);
+      const latest = {};
+      rows.forEach((r) => { if (!latest[r.package]) latest[r.package] = r; });
+      const w = latest["wort.des.tages"], z = latest["zitat.des.tages"];
+      if (!w && !z) { el.textContent = "–"; $("#play-hint").textContent = "Noch nicht eingerichtet"; return; }
+      el.textContent = fmt((w?.total_user_installs || 0) + (z?.total_user_installs || 0));
+      $("#play-hint").textContent = `Wort ${fmt(w?.total_user_installs)} · Zitat ${fmt(z?.total_user_installs)}`;
     } catch {
       el.textContent = "–";
+      $("#play-hint").textContent = "Noch nicht eingerichtet";
     }
   }
 
@@ -966,6 +971,198 @@
     ], rows, "Keine neuen Nutzer.")}</section>`;
   }
 
+  // ---------- Social Media: Historie beider Apps
+  const PLATFORMS = {
+    zitat: ["instagram", "facebook", "tiktok", "youtube", "threads", "x"],
+    wort: ["youtube", "tiktok", "instagram", "facebook", "pinterest", "threads", "x"],
+  };
+  const PLATFORM_NAMES = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", youtube: "YouTube", threads: "Threads", x: "X", pinterest: "Pinterest" };
+  const SOCIAL_STATE = {
+    sent: { icon: "✓", label: "Veröffentlicht", cls: "ok" },
+    scheduled: { icon: "◷", label: "Eingeplant", cls: "wait" },
+    failed: { icon: "✗", label: "Fehlgeschlagen", cls: "bad" },
+    skipped: { icon: "✗", label: "Nicht ausgeführt", cls: "bad" },
+  };
+
+  async function loadSocial(p, days) {
+    const from = shiftIso(todayIso(), -(days - 1));
+    return api(p, `social_posts?select=day,platform,status,link,message,updated_at&day=gte.${from}&order=day.desc`);
+  }
+
+  function socialGrid(p, rows, days) {
+    const by = {};
+    rows.forEach((r) => { by[`${r.day}|${r.platform}`] = r; });
+    const platforms = [...new Set([...PLATFORMS[p], ...rows.map((r) => r.platform)])];
+    const today = todayIso();
+    const dayList = [...Array(days)].map((_, i) => shiftIso(today, -i));
+    let ok = 0, bad = 0, missingDays = 0;
+    const body = dayList.map((d) => {
+      const cells = platforms.map((pl) => {
+        const r = by[`${d}|${pl}`];
+        if (!r) return `<td class="soc none" title="Kein Eintrag – nicht gepostet oder Lauf nicht gestartet">–</td>`;
+        const st = SOCIAL_STATE[r.status] || { icon: "?", label: r.status, cls: "wait" };
+        if (st.cls === "ok") ok++; else if (st.cls === "bad") bad++;
+        const title = `${PLATFORM_NAMES[pl] || pl}: ${st.label}${r.message ? ` – ${r.message}` : ""} (${dateTime(r.updated_at)})`;
+        const inner = r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener">${st.icon}</a>` : st.icon;
+        return `<td class="soc ${st.cls}" title="${esc(title)}">${inner}</td>`;
+      }).join("");
+      const any = platforms.some((pl) => by[`${d}|${pl}`]);
+      if (!any && d !== today) missingDays++;
+      return `<tr${any ? "" : ' class="soc-missing"'}><td>${wdDay(d)}${d === today ? " <span class=\"muted small\">heute</span>" : ""}</td>${cells}</tr>`;
+    }).join("");
+    const summary = `${fmt(ok)} veröffentlicht · ${fmt(bad)} fehlgeschlagen · ${fmt(missingDays)} Tage ganz ohne Eintrag`;
+    return { summary, html: `<div class="table-wrap"><table class="soc-table"><thead><tr><th>Tag</th>${platforms.map((pl) => `<th class="soc">${esc(PLATFORM_NAMES[pl] || pl)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>` };
+  }
+
+  async function renderSocial() {
+    const days = 30;
+    view().innerHTML = head("Social Media", "Tägliches Video – wo und wann gepostet wurde") + loading();
+    let html = head("Social Media", "Tägliches Video – wo und wann gepostet wurde (letzte 30 Tage)") +
+      `<p class="legend"><span>✓ veröffentlicht</span><span>◷ eingeplant</span><span>✗ fehlgeschlagen</span><span>– kein Eintrag</span></p>`;
+    for (const p of ["wort", "zitat"]) {
+      html += `<h2 class="section-title"><span class="dot ${p}"></span>${esc(PROJECTS[p].name)}</h2>`;
+      if (!loggedIn(p)) { html += `<div class="note-box">Nicht angemeldet.</div>`; continue; }
+      try {
+        const rows = await loadSocial(p, days);
+        const g = socialGrid(p, rows, days);
+        html += `<p class="muted small">${g.summary}</p><section class="panel">${g.html}</section>`;
+      } catch (e) {
+        html += `<div class="note-box">${/social_posts/.test(e.message) ? "Die Tabelle für die Historie fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
+      }
+    }
+    html += `<p class="muted small" style="margin-top:14px">Die Einträge schreiben die beiden Video-Pipelines bei jedem Lauf. Beim Zitat-Video prüft ein Kontrolllauf um 8:45 Uhr zusätzlich bei Buffer, ob wirklich veröffentlicht wurde – der Haken führt dann direkt zum Beitrag. Ältere Tage vor der Einrichtung sind leer.</p>`;
+    view().innerHTML = html;
+  }
+
+  async function socialToday(p) {
+    try {
+      const rows = await api(p, `social_posts?select=platform,status&day=eq.${todayIso()}`);
+      if (!rows.length) return { text: "Noch nichts", hint: "Heute kein Eintrag", warn: true };
+      const ok = rows.filter((r) => r.status === "sent" || r.status === "scheduled").length;
+      const bad = rows.length - ok;
+      return { text: bad ? `${ok} ✓ · ${bad} ✗` : `${ok} ✓`, hint: bad ? "Fehler – siehe Social Media" : "Alle Plattformen ok", warn: !!bad };
+    } catch {
+      return { text: "–", hint: "Historie noch nicht eingerichtet", warn: false };
+    }
+  }
+
+  // ---------- Google Play
+  async function renderPlay() {
+    view().innerHTML = head("Google Play") + loading();
+    if (!loggedIn("zitat")) { view().innerHTML = head("Google Play") + `<div class="note-box">Dafür musst du bei „Zitat des Tages“ angemeldet sein – dort werden die Play-Zahlen gespeichert.</div>`; return; }
+    let rows;
+    try { rows = await api("zitat", `play_stats?select=*&day=gte.${shiftIso(todayIso(), -90)}&order=day.asc`); }
+    catch (e) { view().innerHTML = head("Google Play") + `<div class="note-box">${/play_stats/.test(e.message) ? "Die Tabelle fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`; return; }
+    if (!rows.length) {
+      view().innerHTML = head("Google Play") + `<div class="note-box">Noch keine Daten. Die Zahlen kommen täglich aus den Berichten der Play Console, sobald der Google-Zugang eingerichtet ist. Nach dem Einrichten dauert es 1–2 Tage, bis Google die ersten Berichte bereitstellt.</div>`;
+      return;
+    }
+    const apps = [["wort", "wort.des.tages"], ["zitat", "zitat.des.tages"]];
+    let html = head("Google Play", "Aus den Berichten der Play Console (Stand: Vortag)");
+    const charts = [];
+    for (const [p, pkg] of apps) {
+      const r = rows.filter((x) => x.package === pkg);
+      html += `<h2 class="section-title"><span class="dot ${p}"></span>${esc(PROJECTS[p].name)}</h2>`;
+      if (!r.length) { html += `<div class="note-box">Noch keine Berichte für ${esc(pkg)}.</div>`; continue; }
+      const last = [...r].reverse().find((x) => x.total_user_installs !== null) || r[r.length - 1];
+      const sum = (n, k) => r.slice(-n).reduce((a, x) => a + (x[k] || 0), 0);
+      const rating = [...r].reverse().find((x) => x.total_avg_rating !== null);
+      html += `<div class="tiles">
+        ${tile("Installationen gesamt", fmt(last.total_user_installs), `Stand ${shortDay(last.day)}`, `accent-${p}`)}
+        ${tile("Aktive Geräte", fmt(last.active_device_installs), "App ist installiert", `accent-${p}`)}
+        ${tile("Neu installiert (7 / 30 Tage)", `${fmt(sum(7, "daily_user_installs"))} / ${fmt(sum(30, "daily_user_installs"))}`, "", `accent-${p}`)}
+        ${tile("Deinstalliert (7 / 30 Tage)", `${fmt(sum(7, "daily_user_uninstalls"))} / ${fmt(sum(30, "daily_user_uninstalls"))}`, "", `accent-${p}`)}
+        ${tile("Bewertung", rating ? `${Number(rating.total_avg_rating).toLocaleString("de-DE", { maximumFractionDigits: 2 })} ★` : "–", "Durchschnitt aller Bewertungen", `accent-${p}`)}
+      </div>
+      <div class="charts" style="margin-top:14px">
+        ${panel(`play-${p}-inst`, "Installationen und Deinstallationen pro Tag", "Letzte 90 Tage", true, [{ label: "Installiert", color: SERIES[0] }, { label: "Deinstalliert", color: SERIES[1] }])}
+        ${panel(`play-${p}-active`, "Aktive Geräte", "")}
+        ${panel(`play-${p}-rating`, "Bewertung (Durchschnitt)", "")}
+      </div>`;
+      charts.push(() => {
+        const labels = r.map((x) => shortDay(x.day));
+        lineChart(`play-${p}-inst`, labels, [
+          { label: "Installiert", color: SERIES[0], data: r.map((x) => x.daily_user_installs) },
+          { label: "Deinstalliert", color: SERIES[1], data: r.map((x) => x.daily_user_uninstalls) },
+        ]);
+        lineChart(`play-${p}-active`, labels, [{ label: "Aktive Geräte", color: PROJECTS[p].color, data: r.map((x) => x.active_device_installs) }]);
+        lineChart(`play-${p}-rating`, labels, [{ label: "Bewertung", color: PROJECTS[p].color, data: r.map((x) => x.total_avg_rating) }]);
+      });
+    }
+    view().innerHTML = html;
+    charts.forEach((f) => f());
+  }
+
+  // ---------- Alle Nutzer (beide Apps)
+  const usersState = { zitat: { q: "", sort: "last_sign_in_at" }, wort: { q: "", sort: "last_sign_in_at" } };
+  const usersCache = { zitat: null, wort: null };
+
+  async function renderAllUsers(p) {
+    const title = `${PROJECTS[p].name} · Alle Nutzer`;
+    view().innerHTML = head(title) + loading();
+    if (!usersCache[p]) {
+      try { usersCache[p] = await rpc(p, "admin_users"); }
+      catch (e) { view().innerHTML = head(title) + `<div class="note-box">${/admin_users/.test(e.message) ? "Die Funktion fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`; return; }
+    }
+    const all = usersCache[p];
+    const st = usersState[p];
+    const isZ = p === "zitat";
+    const sorts = isZ
+      ? [["last_sign_in_at", "Letzter Login"], ["last_seen", "Zuletzt aktiv"], ["created_at", "Registriert"], ["points", "Punkte"], ["active_days", "Aktive Tage"]]
+      : [["last_sign_in_at", "Letzter Login"], ["last_seen", "Zuletzt aktiv"], ["created_at", "Registriert"], ["xp", "XP"], ["active_days", "Aktive Tage"]];
+    const today = todayIso();
+    const seenWithin = (n) => all.filter((u) => u.last_seen && daysBetween(u.last_seen, today) < n).length;
+    const never = all.filter((u) => !u.last_sign_in_at).length;
+
+    const draw = () => {
+      const q = st.q.toLowerCase();
+      const name = (u) => (isZ ? u.username : u.name) || "";
+      const list = all
+        .filter((u) => !q || name(u).toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q))
+        .sort((a, b) => {
+          const va = a[st.sort], vb = b[st.sort];
+          if (va === vb) return 0;
+          if (va === null || va === undefined) return 1;
+          if (vb === null || vb === undefined) return -1;
+          return va < vb ? 1 : -1;
+        });
+      const ago = (iso) => {
+        if (!iso) return "nie";
+        const d = daysBetween(iso.slice(0, 10), today);
+        return d <= 0 ? "heute" : d === 1 ? "gestern" : `vor ${d} Tagen`;
+      };
+      $("#users-table").innerHTML = table([
+        { label: "Nutzer", get: (u) => name(u) || "–" },
+        { label: "E-Mail", get: (u) => u.email },
+        { label: "Letzter Login", html: (u) => `${esc(u.last_sign_in_at ? dateTime(u.last_sign_in_at) : "nie")}<div class="muted small">${ago(u.last_sign_in_at)}</div>` },
+        { label: "Zuletzt aktiv", html: (u) => `${esc(u.last_seen ? shortDay(u.last_seen) : "–")}<div class="muted small">${u.last_seen ? ago(u.last_seen) : ""}</div>` },
+        { label: "Registriert", get: (u) => dateTime(u.created_at) },
+        { label: "Aktive Tage", get: (u) => fmt(u.active_days), num: true },
+        isZ ? { label: "Punkte", get: (u) => fmt(u.points), num: true } : { label: "XP", get: (u) => fmt(u.xp), num: true },
+      ], list.slice(0, 500), "Keine Treffer.") + (list.length > 500 ? `<p class="muted small">Die ersten 500 von ${fmt(list.length)} – Suche verfeinern.</p>` : "");
+      $("#users-count").textContent = `${fmt(list.length)} von ${fmt(all.length)}`;
+    };
+
+    view().innerHTML = head(title, `${fmt(all.length)} Nutzer ohne Bots`) + `
+      <div class="tiles">
+        ${tile("Aktiv heute", fmt(seenWithin(1)), "", `accent-${p}`)}
+        ${tile("Aktiv in 7 Tagen", fmt(seenWithin(7)), "", `accent-${p}`)}
+        ${tile("Aktiv in 30 Tagen", fmt(seenWithin(30)), "", `accent-${p}`)}
+        ${tile("Länger als 30 Tage weg", fmt(all.length - seenWithin(30)), "oder nie aktiv", `accent-${p}`)}
+        ${tile("Nie eingeloggt", fmt(never), "Konto angelegt, aber kein Login", `accent-${p}`)}
+      </div>
+      <div class="toolbar" style="margin:18px 0 10px">
+        <input type="search" id="users-q" placeholder="Name oder E-Mail suchen …" value="${esc(st.q)}" style="max-width:320px">
+        <label class="check" style="gap:8px">Sortieren nach
+          <select id="users-sort" style="width:auto">${sorts.map(([k, l]) => `<option value="${k}"${k === st.sort ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+        <span class="muted small" id="users-count"></span>
+      </div>
+      <section class="panel" id="users-table"></section>`;
+    $("#users-q").addEventListener("input", (e) => { st.q = e.target.value; draw(); });
+    $("#users-sort").addEventListener("change", (e) => { st.sort = e.target.value; draw(); });
+    draw();
+  }
+
   // ---------------------------------------------------------------- Navigation
 
   const ROUTES = {
@@ -981,6 +1178,10 @@
     "wort-suggestions": ["wort", renderWortSuggestions],
     "wort-ideas": ["wort", renderWortIdeas],
     "wort-users": ["wort", renderWortUsers],
+    social: [null, renderSocial],
+    play: [null, renderPlay],
+    "zitat-allusers": ["zitat", () => renderAllUsers("zitat")],
+    "wort-allusers": ["wort", () => renderAllUsers("wort")],
   };
 
   async function route() {

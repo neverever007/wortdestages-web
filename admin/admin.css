@@ -168,3 +168,14 @@ tr:last-child td { border-bottom: 0; }
   .plan-row { grid-template-columns: 1fr; gap: 4px; }
   .dialog .row { grid-template-columns: 1fr; }
 }
+
+/* Social-Media-Historie */
+.soc-table th.soc, .soc-table td.soc { text-align: center; width: 1%; white-space: nowrap; padding: 7px 12px; }
+.soc-table td.soc { font-weight: 700; font-size: 15px; }
+.soc-table td.soc a { text-decoration: none; }
+td.soc.ok { color: var(--good); }
+td.soc.wait { color: var(--warn); }
+td.soc.bad { color: var(--bad); background: rgba(230, 103, 103, .08); }
+td.soc.none { color: var(--muted); }
+tr.soc-missing td:first-child { color: var(--bad); }
+a.tile:hover { border-color: #3a3a40; }
