@@ -1014,14 +1014,87 @@
     return { summary, html: `<div class="table-wrap"><table class="soc-table"><thead><tr><th>Tag</th>${platforms.map((pl) => `<th class="soc">${esc(PLATFORM_NAMES[pl] || pl)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>` };
   }
 
+  // Farbe folgt der Plattform, nie dem Rang (Referenzpalette, dunkle Stufen)
+  const PLATFORM_COLOR = { instagram: "#d55181", facebook: "#3987e5", tiktok: "#199e70", youtube: "#e66767", threads: "#9085e9", x: "#c98500", pinterest: "#d95926" };
+
+  // Kennzahlen aus Buffer (Tabelle social_metrics)
+  function metricsSection(p, rows) {
+    const id = (s) => `sm-${p}-${s}`;
+    if (!rows.length) {
+      return { html: `<div class="note-box">Noch keine Kennzahlen – sie kommen täglich aus Buffer, sobald der Ablauf „Social-Media-Statistiken“ gelaufen ist.</div>`, draw: () => {} };
+    }
+    const sum = (k, list = rows) => list.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+    const platforms = [...new Set(rows.map((r) => r.platform))].sort((a, b) => sum("views", rows.filter((r) => r.platform === b)) - sum("views", rows.filter((r) => r.platform === a)));
+    const today = todayIso();
+    const dayList = [...Array(30)].map((_, i) => shiftIso(today, i - 29));
+    const series = platforms.map((pl) => ({
+      label: PLATFORM_NAMES[pl] || pl,
+      color: PLATFORM_COLOR[pl] || "#a1a1aa",
+      data: dayList.map((d) => sum("views", rows.filter((r) => r.platform === pl && r.day === d))),
+    }));
+    const per = platforms.map((pl) => {
+      const list = rows.filter((r) => r.platform === pl);
+      const watch = list.filter((r) => r.avg_watch_sec !== null);
+      return {
+        pl, posts: list.length, views: sum("views", list), likes: sum("likes", list), comments: sum("comments", list),
+        shares: sum("shares", list), saves: sum("saves", list),
+        avgWatch: watch.length ? sum("avg_watch_sec", watch) / watch.length : null,
+      };
+    });
+    const top = [...rows].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0)).slice(0, 10);
+    const html = `
+      <div class="tiles">
+        ${tile("Aufrufe", fmt(Math.round(sum("views"))), `${fmt(rows.length)} Beiträge in 30 Tagen`, `accent-${p}`)}
+        ${tile("Reichweite", fmt(Math.round(sum("reach"))), "Erreichte Personen", `accent-${p}`)}
+        ${tile("Likes", fmt(Math.round(sum("likes"))), "", `accent-${p}`)}
+        ${tile("Kommentare", fmt(Math.round(sum("comments"))), "", `accent-${p}`)}
+        ${tile("Geteilt", fmt(Math.round(sum("shares"))), "", `accent-${p}`)}
+        ${tile("Gespeichert", fmt(Math.round(sum("saves"))), "", `accent-${p}`)}
+      </div>
+      <div class="charts" style="margin-top:14px">
+        ${panel(id("views"), "Aufrufe nach Plattform", "Nach Tag der Veröffentlichung · letzte 30 Tage", true, series)}
+        <section class="panel wide"><h3>Plattformen im Vergleich</h3><p class="desc">Letzte 30 Tage</p>
+          ${table([
+            { label: "Plattform", html: (x) => `<span class="dot" style="background:${PLATFORM_COLOR[x.pl] || "#a1a1aa"}"></span>${esc(PLATFORM_NAMES[x.pl] || x.pl)}` },
+            { label: "Beiträge", get: (x) => fmt(x.posts), num: true },
+            { label: "Aufrufe", get: (x) => fmt(Math.round(x.views)), num: true },
+            { label: "Ø Aufrufe", get: (x) => fmt(Math.round(x.views / (x.posts || 1))), num: true },
+            { label: "Likes", get: (x) => fmt(Math.round(x.likes)), num: true },
+            { label: "Kommentare", get: (x) => fmt(Math.round(x.comments)), num: true },
+            { label: "Geteilt", get: (x) => fmt(Math.round(x.shares)), num: true },
+            { label: "Ø Wiedergabe", get: (x) => (x.avgWatch === null ? "–" : `${x.avgWatch.toLocaleString("de-DE", { maximumFractionDigits: 1 })} s`), num: true },
+          ], per)}</section>
+        <section class="panel wide"><h3>Top-Beiträge</h3><p class="desc">Nach Aufrufen</p>
+          ${table([
+            { label: "Datum", get: (x) => shortDay(x.day) },
+            { label: "Plattform", get: (x) => PLATFORM_NAMES[x.platform] || x.platform },
+            { label: "Beitrag", html: (x) => x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.text_snippet || "ansehen")}</a>` : esc(x.text_snippet), clip: true },
+            { label: "Aufrufe", get: (x) => fmt(Math.round(Number(x.views) || 0)), num: true },
+            { label: "Likes", get: (x) => fmt(Math.round(Number(x.likes) || 0)), num: true },
+            { label: "Komm.", get: (x) => fmt(Math.round(Number(x.comments) || 0)), num: true },
+          ], top)}</section>
+      </div>`;
+    return { html, draw: () => lineChart(id("views"), dayList.map(shortDay), series) };
+  }
+
   async function renderSocial() {
     const days = 30;
-    view().innerHTML = head("Social Media", "Tägliches Video – wo und wann gepostet wurde") + loading();
-    let html = head("Social Media", "Tägliches Video – wo und wann gepostet wurde (letzte 30 Tage)") +
-      `<p class="legend"><span>✓ veröffentlicht</span><span>◷ eingeplant</span><span>✗ fehlgeschlagen</span><span>– kein Eintrag</span></p>`;
+    view().innerHTML = head("Social Media") + loading();
+    let html = head("Social Media", "Reichweite der täglichen Videos und wo gepostet wurde (letzte 30 Tage)");
+    const draws = [];
     for (const p of ["wort", "zitat"]) {
       html += `<h2 class="section-title"><span class="dot ${p}"></span>${esc(PROJECTS[p].name)}</h2>`;
       if (!loggedIn(p)) { html += `<div class="note-box">Nicht angemeldet.</div>`; continue; }
+      try {
+        const rows = await api(p, `social_metrics?select=post_id,platform,day,link,text_snippet,views,reach,likes,comments,shares,saves,avg_watch_sec&day=gte.${shiftIso(todayIso(), -29)}&app=eq.${p}`);
+        const m = metricsSection(p, rows);
+        html += m.html;
+        draws.push(m.draw);
+      } catch (e) {
+        html += `<div class="note-box">${/social_metrics/.test(e.message) ? "Die Tabelle für die Kennzahlen fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
+      }
+      html += `<h3 style="margin:22px 0 8px;font-size:15px">Wurde gepostet?</h3>
+        <p class="legend"><span>✓ veröffentlicht</span><span>◷ eingeplant</span><span>✗ fehlgeschlagen</span><span>– kein Eintrag</span></p>`;
       try {
         const rows = await loadSocial(p, days);
         const g = socialGrid(p, rows, days);
@@ -1030,8 +1103,9 @@
         html += `<div class="note-box">${/social_posts/.test(e.message) ? "Die Tabelle für die Historie fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
       }
     }
-    html += `<p class="muted small" style="margin-top:14px">Die Einträge schreiben die beiden Video-Pipelines bei jedem Lauf. Beim Zitat-Video prüft ein Kontrolllauf um 8:45 Uhr zusätzlich bei Buffer, ob wirklich veröffentlicht wurde – der Haken führt dann direkt zum Beitrag. Ältere Tage vor der Einrichtung sind leer.</p>`;
+    html += `<p class="muted small" style="margin-top:14px">Kennzahlen kommen täglich aus Buffer und wachsen noch einige Tage nach dem Posten. Die Posting-Historie schreiben die Video-Pipelines bei jedem Lauf; ältere Tage vor der Einrichtung sind leer. Follower-Zahlen liefert Buffer nicht.</p>`;
     view().innerHTML = html;
+    draws.forEach((f) => f());
   }
 
   async function socialToday(p) {
