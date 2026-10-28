@@ -213,14 +213,16 @@
 
   // ---------------------------------------------------------------- Dialog mit Formular
 
-  function formDialog({ title, intro = "", fields, submit = "Speichern", danger, onSubmit, onDanger }) {
+  function formDialog({ title, intro = "", fields, submit = "Speichern", danger, onSubmit, onDanger, onOpen }) {
     const dlg = $("#dialog");
     const field = (f) => {
       const common = `name="${f.name}" ${f.required ? "required" : ""} ${f.placeholder ? `placeholder="${esc(f.placeholder)}"` : ""}`;
       const input = f.type === "textarea"
         ? `<textarea ${common}>${esc(f.value)}</textarea>`
-        : `<input type="${f.type || "text"}" ${common} value="${esc(f.value)}" ${f.min !== undefined ? `min="${f.min}"` : ""}>`;
-      return `<label>${esc(f.label)}${input}</label>`;
+        : f.type === "select"
+          ? `<select ${common}>${f.options.map((o) => `<option value="${esc(o.value)}"${o.value === f.value ? " selected" : ""}>${esc(o.label)}</option>`).join("")}</select>`
+          : `<input type="${f.type || "text"}" ${common} value="${esc(f.value)}" ${f.min !== undefined ? `min="${f.min}"` : ""}>`;
+      return `<label>${esc(f.label)}${input}${f.help ? `<span class="small muted" data-help="${f.name}">${f.help}</span>` : ""}</label>`;
     };
     const rows = fields.map((f) => Array.isArray(f) ? `<div class="row">${f.map(field).join("")}</div>` : field(f)).join("");
     dlg.innerHTML = `<form novalidate>
@@ -252,6 +254,7 @@
     if (d) d.onclick = () => run(onDanger);
     dlg.showModal();
     form.querySelector("input, textarea")?.focus();
+    onOpen?.(form);
   }
 
   const nullIfEmpty = (s) => (s ? s : null);
@@ -500,6 +503,7 @@
       <button class="btn small" data-shift="-60">← 60 Tage</button>
       <button class="btn small" data-shift="0">Heute</button>
       <button class="btn small" data-shift="60">60 Tage →</button>
+      ${jumpControls(from)}
       <button class="btn small primary" data-add>+ Zitat ohne Datum</button></div>`;
     view().innerHTML = head("Zitat des Tages · Planung", `${shortDay(from)} – ${shortDay(to)}`, toolbar) + loading();
     let rows;
@@ -531,8 +535,29 @@
         zitatPlanState.from = n === 0 ? todayIso() : shiftIso(zitatPlanState.from, n);
         renderZitatPlan();
       }));
+      bindJump("zitat", zitatPlanState, renderZitatPlan);
       view().querySelector("[data-add]")?.addEventListener("click", addZitatWithoutDay);
     }
+  }
+
+  // Datum anspringen und zur nächsten freien Stelle springen (für beide Planungen)
+  const jumpControls = (from) => `
+    <input type="date" data-jump value="${from}" aria-label="Zu Datum springen" style="width:auto;padding:6px 10px">
+    <button class="btn small" data-gap>Nächste Lücke</button>`;
+
+  function bindJump(p, state, render) {
+    view().querySelector("[data-jump]")?.addEventListener("change", (e) => {
+      if (!e.target.value) return;
+      state.from = e.target.value;
+      render();
+    });
+    view().querySelector("[data-gap]")?.addEventListener("click", async () => {
+      const s = await loadStats(p, true);
+      const gap = s?.planning?.first_gap;
+      if (!gap) return toast("Keine Lücke in den nächsten 2 Jahren");
+      state.from = shiftIso(gap, -3) < todayIso() ? todayIso() : shiftIso(gap, -3);
+      render();
+    });
   }
 
   const quoteFields = (q = {}) => [
@@ -587,10 +612,24 @@
       <article class="item" data-id="${r.id}">
         <div class="meta">von ${esc(r.profiles?.username || "?")} · ${dateTime(r.created_at)}</div>
         <div class="body">„${esc(r.text)}“<br><span class="muted">— ${esc(r.author)}${r.source ? ` · ${esc(r.source)}` : ""}</span></div>
-        <div class="actions"><button class="btn small good" data-accept>Annehmen</button><button class="btn small danger" data-reject>Ablehnen</button></div>
+        <div class="actions"><button class="btn small good" data-accept>Annehmen</button><button class="btn small" data-edit>Bearbeiten</button><button class="btn small danger" data-reject>Ablehnen</button></div>
       </article>`).join("")}</div>` : `<p class="empty">Keine offenen Vorschläge.</p>`);
     view().querySelectorAll(".item").forEach((el) => {
       const id = Number(el.dataset.id);
+      const r = rows.find((x) => x.id === id);
+      el.querySelector("[data-edit]").onclick = () => formDialog({
+        title: "Vorschlag bearbeiten",
+        intro: `<p class="muted small">Zum Beispiel Rechtschreibung korrigieren – danach annehmen.</p>`,
+        fields: [
+          { name: "text", label: "Zitat", type: "textarea", value: r.text, required: true },
+          [{ name: "author", label: "Autor", value: r.author, required: true }, { name: "source", label: "Quelle", value: r.source }],
+        ],
+        onSubmit: async (d) => {
+          await api(p, `suggestions?id=eq.${id}`, { method: "PATCH", body: { text: d.text, author: d.author, source: nullIfEmpty(d.source) }, prefer: "return=minimal" });
+          toast("Vorschlag geändert");
+          renderZitatSuggestions();
+        },
+      });
       const act = async (accept) => {
         el.querySelectorAll("button").forEach((b) => { b.disabled = true; });
         try {
@@ -690,11 +729,12 @@
     const toolbar = `<div class="toolbar">
       <button class="btn small" data-shift="-60">← 60 Tage</button>
       <button class="btn small" data-shift="0">Heute</button>
-      <button class="btn small" data-shift="60">60 Tage →</button></div>`;
+      <button class="btn small" data-shift="60">60 Tage →</button>
+      ${jumpControls(from)}</div>`;
     view().innerHTML = head("Wort des Tages · Planung", `${shortDay(from)} – ${shortDay(to)}`, toolbar) + loading();
     let rows;
     try {
-      rows = await api(p, `words?select=id,wort,lautschrift,wortart,definition,beispielsatz,synonyme,datum&and=(datum.gte.${from},datum.lte.${to})&order=datum.asc`);
+      rows = await api(p, `words?select=id,wort,lautschrift,wortart,definition,beispielsatz,synonyme,datum,is_community&and=(datum.gte.${from},datum.lte.${to})&order=datum.asc`);
     } catch (e) { view().innerHTML = head("Wort des Tages · Planung", "", toolbar) + `<div class="note-box">${esc(e.message)}</div>`; bindToolbar(); return; }
     const byDay = Object.fromEntries(rows.map((r) => [r.datum, r]));
     const list = [];
@@ -705,7 +745,7 @@
       `<div class="plan">${list.map((r) => `
         <div class="plan-row${r.wort ? "" : " gap"}${r.datum === today ? " today" : ""}" data-day="${r.datum}" tabindex="0">
           <div class="date"><b>${wdDay(r.datum)}</b>${r.datum === today ? "heute" : ""}</div>
-          <div class="content"><div class="main">${r.wort ? `<strong>${esc(r.wort)}</strong> <span class="muted">${esc(r.wortart || "")}</span>` : "Noch kein Wort geplant"}</div>
+          <div class="content"><div class="main">${r.wort ? `<strong>${esc(r.wort)}</strong> <span class="muted">${esc(r.wortart || "")}${r.is_community ? " · Community-Vorschlag" : ""}</span>` : "Noch kein Wort geplant"}</div>
             ${r.wort ? `<div class="by">${esc(r.definition)}</div>` : ""}</div>
           <span class="muted small">${r.wort ? "Bearbeiten" : "Planen"}</span>
         </div>`).join("")}</div>`;
@@ -722,6 +762,7 @@
         wortPlanState.from = n === 0 ? todayIso() : shiftIso(wortPlanState.from, n);
         renderWortPlan();
       }));
+      bindJump("wort", wortPlanState, renderWortPlan);
     }
   }
 
@@ -765,6 +806,14 @@
     return s?.planning?.first_gap || shiftIso(todayIso(), 1);
   }
 
+  // Erster Tag ab `from` ohne geplantes Wort
+  async function nextFreeWordDay(from) {
+    const taken = new Set((await api("wort", `words?select=datum&and=(datum.gte.${from},datum.lte.${shiftIso(from, 730)})`)).map((w) => w.datum));
+    let d = from;
+    while (taken.has(d)) d = shiftIso(d, 1);
+    return d;
+  }
+
   // ---------- Vorschläge: Wort
   async function renderWortSuggestions() {
     const p = "wort";
@@ -776,11 +825,25 @@
       <article class="item" data-id="${esc(r.id)}">
         <div class="meta">von ${esc(r.profiles?.name || "?")} · ${dateTime(r.created_at)} <span data-dupe></span></div>
         <div class="body"><strong>${esc(r.wort)}</strong><br><span class="muted">${esc(r.begruendung)}</span></div>
-        <div class="actions"><button class="btn small good" data-accept>Annehmen …</button><button class="btn small danger" data-reject>Ablehnen …</button></div>
+        <div class="actions"><button class="btn small good" data-accept>Annehmen …</button><button class="btn small" data-edit>Bearbeiten</button><button class="btn small danger" data-reject>Ablehnen …</button></div>
       </article>`).join("")}</div>` : `<p class="empty">Keine offenen Vorschläge.</p>`);
 
     view().querySelectorAll(".item").forEach((el) => {
       const r = rows.find((x) => String(x.id) === el.dataset.id);
+
+      el.querySelector("[data-edit]").onclick = () => formDialog({
+        title: "Vorschlag bearbeiten",
+        intro: `<p class="muted small">Zum Beispiel Rechtschreibung korrigieren – danach annehmen.</p>`,
+        fields: [
+          { name: "wort", label: "Wort", value: r.wort, required: true },
+          { name: "begruendung", label: "Begründung", type: "textarea", value: r.begruendung, required: true },
+        ],
+        onSubmit: async (d) => {
+          await api(p, `word_suggestions?id=eq.${encodeURIComponent(r.id)}`, { method: "PATCH", body: { wort: d.wort, begruendung: d.begruendung }, prefer: "return=minimal" });
+          toast("Vorschlag geändert");
+          renderWortSuggestions();
+        },
+      });
       // Gab es das Wort schon?
       api(p, `words?select=datum&wort=ilike.${encodeURIComponent(r.wort)}`).then((hits) => {
         if (hits.length) el.querySelector("[data-dupe]").innerHTML = ` · <span style="color:var(--warn)">schon am ${hits.map((h) => shortDay(h.datum)).join(", ")} verwendet</span>`;
@@ -798,24 +861,61 @@
 
       el.querySelector("[data-accept]").onclick = async () => {
         const datum = await firstFreeWordDay();
+        const occupant = async (day) => (await api(p, `words?select=id,wort&datum=eq.${day}`))[0] || null;
         formDialog({
           title: `„${r.wort}“ annehmen`,
-          intro: `<p class="muted small">Das Wort wird als Community-Wort eingeplant und der Nutzer bekommt Punkte.</p>`,
+          intro: `<p class="muted small">Das Wort wird als Community-Wort eingeplant und der Nutzer bekommt Punkte. Du kannst jeden Tag wählen – auch einen, an dem schon ein Wort geplant ist.</p>`,
           fields: [
-            [{ name: "wortart", label: "Wortart", placeholder: "Substantiv, Verb …" }, { name: "lautschrift", label: "Lautschrift" }],
+            [{ name: "wort", label: "Wort (Schreibweise prüfen)", value: r.wort, required: true }, { name: "wortart", label: "Wortart", placeholder: "Substantiv, Verb …" }],
+            { name: "lautschrift", label: "Lautschrift" },
             { name: "definition", label: "Bedeutung", type: "textarea", required: true },
             { name: "beispielsatz", label: "Beispielsatz", type: "textarea" },
-            [{ name: "synonyme", label: "Synonyme (mit Komma getrennt)" }, { name: "datum", label: "Datum", type: "date", value: datum, required: true }],
+            [{ name: "synonyme", label: "Synonyme (mit Komma getrennt)" }, { name: "datum", label: "Datum", type: "date", value: datum, required: true, help: "Freier Tag" }],
+            { name: "replace", label: "Wenn an diesem Tag schon ein Wort geplant ist", type: "select", value: "move", options: [
+              { value: "move", label: "Bisheriges Wort auf den nächsten freien Tag verschieben" },
+              { value: "delete", label: "Bisheriges Wort löschen und ersetzen" },
+            ] },
             [{ name: "points", label: "Punkte für den Nutzer", type: "number", value: "20", min: 0 }, { name: "note", label: "Notiz an den Nutzer" }],
           ],
           submit: "Annehmen & planen",
+          onOpen: (form) => {
+            const input = form.querySelector('[name="datum"]');
+            const help = form.querySelector('[data-help="datum"]');
+            const check = async () => {
+              if (!input.value) return;
+              const o = await occupant(input.value).catch(() => null);
+              help.innerHTML = o ? `<span style="color:var(--warn)">Belegt mit „${esc(o.wort)}“ – wird ersetzt (siehe unten)</span>` : "Freier Tag";
+            };
+            input.addEventListener("change", check);
+            check();
+          },
           onSubmit: async (d) => {
+            // Schreibweise korrigiert? Dann zuerst den Vorschlag anpassen – die Datenbank übernimmt das Wort von dort.
+            if (d.wort !== r.wort) {
+              await api(p, `word_suggestions?id=eq.${encodeURIComponent(r.id)}`, { method: "PATCH", body: { wort: d.wort }, prefer: "return=minimal" });
+            }
+            // Tag belegt? Bisheriges Wort verschieben oder löschen.
+            const o = await occupant(d.datum);
+            let moved = "";
+            if (o) {
+              if (d.replace === "delete") {
+                await api(p, `words?id=eq.${encodeURIComponent(o.id)}`, { method: "DELETE" });
+              } else {
+                const free = await nextFreeWordDay(shiftIso(d.datum, 1));
+                await api(p, `words?id=eq.${encodeURIComponent(o.id)}`, { method: "PATCH", body: { datum: free }, prefer: "return=minimal" });
+                moved = ` – „${o.wort}“ ist jetzt am ${shortDay(free)}`;
+              }
+            }
             await rpc(p, "accept_suggestion", {
               p_suggestion_id: r.id, p_lautschrift: nullIfEmpty(d.lautschrift), p_wortart: nullIfEmpty(d.wortart),
               p_definition: d.definition, p_beispielsatz: nullIfEmpty(d.beispielsatz), p_synonyme: synList(d.synonyme),
               p_datum: d.datum, p_points: Number(d.points) || 0, p_review_note: nullIfEmpty(d.note),
             });
-            toast(`Angenommen und für ${shortDay(d.datum)} geplant`); el.remove(); stats.wort = null; loadStats("wort");
+            toast(`„${d.wort}“ für ${shortDay(d.datum)} geplant${moved}`);
+            stats.wort = null;
+            // Direkt zur Planung an diesem Tag springen
+            wortPlanState.from = shiftIso(d.datum, -3) < todayIso() ? todayIso() : shiftIso(d.datum, -3);
+            location.hash = "#wort-plan";
           },
         });
       };
