@@ -154,3 +154,7 @@ img { max-width: 100%; display: block; }
   .card { padding: 24px 20px 22px; border-radius: 18px; }
   .hero { padding-top: 32px; }
 }
+
+.app-legal { font-size: 14px; }
+.wort-card .app-legal a { color: var(--wort-soft); }
+.zitat-card .app-legal a { color: var(--zitat-soft); }

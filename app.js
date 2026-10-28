@@ -105,5 +105,7 @@
     show(location.hash === "#zitate" ? "zitate" : "woerter");
   }
 
-  document.body.dataset.page === "archiv" ? archive() : home();
+  const page = document.body.dataset.page;
+  if (page === "archiv") archive();
+  else if (page === "home") home();
 })();
