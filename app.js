@@ -85,16 +85,16 @@
         if (kind === "woerter") {
           const words = await loadWords();
           listEl.innerHTML = words.map((w) => `
-            <article class="card entry"><time datetime="${w.datum}">${shortDate(w.datum)}</time><div>${wordBody(w, true)}</div></article>`).join("")
+            <article class="card wort-card entry"><time datetime="${w.datum}">${shortDate(w.datum)}</time><div>${wordBody(w, true)}</div></article>`).join("")
             || `<p class="skeleton">Noch keine Wörter.</p>`;
         } else {
           const quotes = await loadQuotes();
           listEl.innerHTML = quotes.map((q) => `
-            <article class="card entry"><time datetime="${q.day}">${shortDate(q.day)}</time><div>${quoteBody(q, true)}</div></article>`).join("")
+            <article class="card zitat-card entry"><time datetime="${q.day}">${shortDate(q.day)}</time><div>${quoteBody(q, true)}</div></article>`).join("")
             || `<p class="skeleton">Noch keine Zitate.</p>`;
         }
       } catch {
-        listEl.innerHTML = failed(kind === "woerter" ? "Das Archiv" : "Das Archiv");
+        listEl.innerHTML = failed("Das Archiv");
       }
     };
     tabs.forEach((t) => t.addEventListener("click", (e) => {
