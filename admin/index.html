@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Admin – Wort &amp; Zitat des Tages</title>
+<link rel="icon" href="../img/wort-icon.webp" type="image/webp">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<!-- ---------- Anmeldung -->
+<section id="login" class="login" hidden>
+  <form id="login-form" class="login-card" autocomplete="on">
+    <div class="login-logos"><img src="../img/wort-icon.webp" alt=""><img src="../img/zitat-icon.png" alt=""></div>
+    <h1>Admin</h1>
+    <p class="muted">Mit deinen Admin-Zugangsdaten aus den Apps anmelden.</p>
+
+    <fieldset id="cred-zitat">
+      <legend><span class="dot zitat"></span>Zitat des Tages</legend>
+      <label>E-Mail<input name="zitat-email" type="email" autocomplete="username" required></label>
+      <label>Passwort<input name="zitat-password" type="password" autocomplete="current-password" required></label>
+    </fieldset>
+
+    <label class="check"><input type="checkbox" id="same" checked> Gleiche Zugangsdaten für „Wort des Tages“</label>
+
+    <fieldset id="cred-wort" hidden>
+      <legend><span class="dot wort"></span>Wort des Tages</legend>
+      <label>E-Mail<input name="wort-email" type="email" autocomplete="off"></label>
+      <label>Passwort<input name="wort-password" type="password" autocomplete="off"></label>
+    </fieldset>
+
+    <button type="submit" class="btn primary">Anmelden</button>
+    <p id="login-error" class="error" role="alert"></p>
+  </form>
+</section>
+
+<!-- ---------- Dashboard -->
+<div id="app" class="shell" hidden>
+  <aside class="side">
+    <div class="side-head">
+      <span class="logos"><img src="../img/wort-icon.webp" alt=""><img src="../img/zitat-icon.png" alt=""></span>
+      <strong>Admin</strong>
+    </div>
+    <nav id="nav" class="nav">
+      <a href="#overview">Übersicht</a>
+      <div class="nav-group zitat" data-project="zitat">
+        <span class="nav-title"><span class="dot zitat"></span>Zitat des Tages</span>
+        <a href="#zitat-stats">Statistik</a>
+        <a href="#zitat-plan">Planung</a>
+        <a href="#zitat-suggestions">Vorschläge <b class="badge" data-badge="zitat-suggestions"></b></a>
+        <a href="#zitat-reports">Meldungen <b class="badge" data-badge="zitat-reports"></b></a>
+        <a href="#zitat-ideas">App-Ideen <b class="badge" data-badge="zitat-ideas"></b></a>
+        <a href="#zitat-users">Neue Nutzer</a>
+      </div>
+      <div class="nav-group wort" data-project="wort">
+        <span class="nav-title"><span class="dot wort"></span>Wort des Tages</span>
+        <a href="#wort-stats">Statistik</a>
+        <a href="#wort-plan">Planung</a>
+        <a href="#wort-suggestions">Vorschläge <b class="badge" data-badge="wort-suggestions"></b></a>
+        <a href="#wort-ideas">App-Ideen <b class="badge" data-badge="wort-ideas"></b></a>
+        <a href="#wort-users">Neue Nutzer</a>
+      </div>
+    </nav>
+    <div class="side-foot">
+      <button id="refresh" class="btn ghost small" type="button">Aktualisieren</button>
+      <button id="logout" class="btn ghost small" type="button">Abmelden</button>
+    </div>
+  </aside>
+  <main id="view" class="view" tabindex="-1"></main>
+</div>
+
+<dialog id="dialog" class="dialog"></dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="../config.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
