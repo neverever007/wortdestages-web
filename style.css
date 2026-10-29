@@ -158,3 +158,14 @@ img { max-width: 100%; display: block; }
 .app-legal { font-size: 14px; }
 .wort-card .app-legal a { color: var(--wort-soft); }
 .zitat-card .app-legal a { color: var(--zitat-soft); }
+
+/* Einzelseite zum Teilen (wort/…, zitat/…) */
+.share { max-width: 760px; padding-top: 36px; padding-bottom: 20px; }
+.share-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.btn { font: 600 15px/1 var(--sans); border-radius: 999px; padding: 13px 20px; border: 1px solid var(--text); background: var(--text); color: var(--bg); cursor: pointer; text-decoration: none; }
+.btn.ghost { background: transparent; color: var(--text); border-color: var(--line); }
+.btn:hover { filter: brightness(1.08); }
+.share-more { margin-top: 18px; color: var(--muted); font-size: 14.5px; }
+.share-more a { color: var(--soft); }
+.word-link, .quote-link { color: inherit; text-decoration: none; }
+.word-link:hover, .quote-link:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }

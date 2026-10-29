@@ -12,6 +12,9 @@
   const shiftIso = (iso, days) => { const t = parse(iso); t.setUTCDate(t.getUTCDate() + days); return t.toISOString().slice(0, 10); };
   const longDate = (iso) => { const t = parse(iso); return `${WEEKDAYS[t.getUTCDay()]}, ${t.getUTCDate()}. ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`; };
   const shortDate = (iso) => { const t = parse(iso); return `${t.getUTCDate()}. ${MONTHS[t.getUTCMonth()]}`; };
+  // Adresse der Einzelseite (gleiche Regel wie tools/build_share.py)
+  const slug = (s) => String(s).toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "wort";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   async function sb({ url, key }, path, body) {
@@ -33,7 +36,7 @@
     const meta = [w.lautschrift && esc(w.lautschrift), w.wortart && `<i>${esc(w.wortart)}</i>`].filter(Boolean).join(" · ");
     const syn = (w.synonyme || []).filter(Boolean);
     return `
-      <h3 class="word">${esc(w.wort)}</h3>
+      <h3 class="word"><a class="word-link" href="wort/${slug(w.wort)}/">${esc(w.wort)}</a></h3>
       ${meta ? `<div class="word-meta">${meta}</div>` : ""}
       <p class="definition">${esc(w.definition)}</p>
       ${w.beispielsatz && !compact ? `<p class="example">„${esc(w.beispielsatz)}“</p>` : ""}
@@ -44,7 +47,7 @@
     const src = [q.source, q.year].filter(Boolean).map(esc).join(" · ");
     return `
       ${compact ? "" : `<div class="qmark" aria-hidden="true">”</div>`}
-      <blockquote class="quote">${esc(q.text)}</blockquote>
+      <blockquote class="quote"><a class="quote-link" href="zitat/${q.day}/">${esc(q.text)}</a></blockquote>
       <div class="author">— ${esc(q.author)}</div>
       ${src ? `<div class="source">${src}</div>` : ""}
       ${q.explanation && !compact ? `<div class="explain"><span class="kicker">Zum Zitat</span>${esc(q.explanation)}</div>` : ""}`;

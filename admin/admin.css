@@ -179,3 +179,13 @@ td.soc.bad { color: var(--bad); background: rgba(230, 103, 103, .08); }
 td.soc.none { color: var(--muted); }
 tr.soc-missing td:first-child { color: var(--bad); }
 a.tile:hover { border-color: #3a3a40; }
+
+/* Mehrfach gepostet */
+td.soc.dup { color: var(--bad); background: rgba(230, 103, 103, .16); font-weight: 700; font-size: 12px; }
+td.soc.dup a { color: inherit; }
+.bad-text { color: var(--bad); }
+.warn-box { border: 1px solid var(--bad); color: var(--text); margin: 0 0 16px; }
+
+/* Beliebtheit */
+.meter { display: inline-block; width: 60px; height: 6px; border-radius: 3px; background: var(--surface-2); vertical-align: middle; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--soft); border-radius: 3px; }

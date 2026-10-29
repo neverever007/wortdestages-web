@@ -967,9 +967,13 @@
 
   // Historie aus den Pipeline-Einträgen, ergänzt um die tatsächlich gefundenen Beiträge (mit Link zum Beitrag)
   function socialGrid(p, rows, posts) {
-    const by = {}, found = {};
+    const by = {}, found = {}, count = {};
     rows.forEach((r) => { by[`${r.day}|${r.platform}`] = r; });
-    posts.forEach((r) => { const k = `${r.day}|${r.platform}`; if (!found[k] || (!found[k].link && r.link)) found[k] = r; });
+    posts.forEach((r) => {
+      const k = `${r.day}|${r.platform}`;
+      count[k] = (count[k] || 0) + 1;
+      if (!found[k] || (!found[k].link && r.link)) found[k] = r;
+    });
     const platforms = [...new Set([...PLATFORMS[p], ...rows.map((r) => r.platform), ...posts.map((r) => r.platform)])];
     const today = todayIso();
     const first = [...rows, ...posts].reduce((a, r) => (r.day < a ? r.day : a), today);
@@ -980,8 +984,10 @@
       const cells = platforms.map((pl) => {
         const r = by[`${d}|${pl}`], f = found[`${d}|${pl}`];
         if (!r && !f) return `<td class="soc none" title="Kein Eintrag – nicht gepostet oder Lauf nicht gestartet">–</td>`;
-        const st = f ? SOCIAL_STATE.sent : SOCIAL_STATE[r.status] || { icon: "?", label: r.status, cls: "wait" };
-        if (st.cls === "ok") ok++; else if (st.cls === "bad") bad++;
+        const n = count[`${d}|${pl}`] || 0;
+        let st = f ? SOCIAL_STATE.sent : SOCIAL_STATE[r.status] || { icon: "?", label: r.status, cls: "wait" };
+        if (n > 1) st = { icon: `${n}×`, label: `${n}× gepostet – mehrfach`, cls: "dup" };
+        if (st.cls === "ok" || st.cls === "dup") ok++; else if (st.cls === "bad") bad++;
         const title = `${PLATFORM_NAMES[pl] || pl}: ${st.label}${!f && r.message ? ` – ${r.message}` : ""}${f?.link ? " – Klick öffnet den Beitrag" : ""}`;
         const inner = f?.link ? `<a href="${esc(f.link)}" target="_blank" rel="noopener">${st.icon}</a>` : st.icon;
         return `<td class="soc ${st.cls}" title="${esc(title)}">${inner}</td>`;
@@ -990,8 +996,10 @@
       if (!any && d !== today) missingDays++;
       return `<tr${any ? "" : ' class="soc-missing"'}><td>${wdDay(d)}${d === today ? " <span class=\"muted small\">heute</span>" : ""}</td>${cells}</tr>`;
     }).join("");
-    const summary = `${fmt(ok)} veröffentlicht · ${fmt(bad)} fehlgeschlagen · ${fmt(missingDays)} Tage ganz ohne Eintrag · seit ${shortDay(first)}`;
-    return { summary, html: `<div class="table-wrap"><table class="soc-table"><thead><tr><th>Tag</th>${platforms.map((pl) => `<th class="soc">${esc(PLATFORM_NAMES[pl] || pl)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>` };
+    const dups = Object.entries(count).filter(([, n]) => n > 1).map(([k, n]) => { const [day, pl] = k.split("|"); return { day, pl, n }; })
+      .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+    const summary = `${fmt(ok)} veröffentlicht · ${fmt(bad)} fehlgeschlagen · ${fmt(missingDays)} Tage ganz ohne Eintrag${dups.length ? ` · <b class="bad-text">${fmt(dups.length)}× mehrfach gepostet</b>` : ""} · seit ${shortDay(first)}`;
+    return { summary, dups, html: `<div class="table-wrap"><table class="soc-table"><thead><tr><th>Tag</th>${platforms.map((pl) => `<th class="soc">${esc(PLATFORM_NAMES[pl] || pl)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>` };
   }
 
   // Farbe folgt der Plattform, nie dem Rang (Referenzpalette, dunkle Stufen)
@@ -1060,10 +1068,55 @@
     return { html, draw: () => lineChart(id("views"), dayList.map(shortDay), series) };
   }
 
+  // Welche Wörter/Zitate kommen an? Social-Aufrufe des Tages (je Plattform nur der stärkste Beitrag,
+  // damit Mehrfach-Posts nicht doppelt zählen) neben Favoriten und Nutzung in der App.
+  function itemsSection(p, items, posts) {
+    const id = `items-${p}`;
+    const best = {};
+    posts.forEach((r) => {
+      const k = `${r.day}|${r.platform}`;
+      best[k] = Math.max(best[k] || 0, Number(r.views) || 0);
+    });
+    const views = {};
+    Object.entries(best).forEach(([k, v]) => { const d = k.split("|")[0]; views[d] = (views[d] || 0) + v; });
+    const rows = items.map((x) => ({ ...x, views: views[x.day] ?? null, app: Number(x.favorites) + Number(x.used) }));
+    // Beliebtheit = Mittel der Rangplätze (0–100) bei Social Media und in der App
+    const pct = (key) => {
+      const list = rows.filter((r) => r[key] !== null).map((r) => r[key]).sort((a, b) => a - b);
+      return (v) => (v === null || list.length < 2 ? null : (100 * list.filter((x) => x < v).length) / (list.length - 1));
+    };
+    const pv = pct("views"), pa = pct("app");
+    rows.forEach((r) => {
+      const parts = [pv(r.views), pa(r.app)].filter((x) => x !== null);
+      r.score = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : null;
+    });
+    const noun = p === "wort" ? "Wort" : "Zitat";
+    const sorts = { score: "Beliebtheit gesamt", views: "Social-Media-Aufrufe", favorites: "Favoriten in der App", used: p === "wort" ? "Benutzt in der App" : "Angewendet in der App", day: "Datum" };
+    const body = (key) => {
+      const list = [...rows].sort((a, b) => (key === "day" ? (a.day < b.day ? 1 : -1) : (b[key] ?? -1) - (a[key] ?? -1)));
+      return table([
+        { label: "Datum", get: (x) => shortDay(x.day) },
+        { label: noun, html: (x) => `${esc(x.title)}${x.author ? ` <span class="muted small">— ${esc(x.author)}</span>` : ""}`, clip: true },
+        { label: "Social-Aufrufe", get: (x) => (x.views === null ? "–" : fmt(Math.round(x.views))), num: true },
+        { label: "Favoriten", get: (x) => fmt(x.favorites), num: true },
+        { label: sorts.used.replace(" in der App", ""), get: (x) => fmt(x.used), num: true },
+        { label: "Beliebtheit", html: (x) => (x.score === null ? "–" : `<span style="white-space:nowrap"><span class="meter"><i style="width:${Math.round(x.score)}%"></i></span> ${Math.round(x.score)}</span>`), num: true },
+      ], list, "Noch keine Daten.");
+    };
+    const html = `
+      <h3 style="margin:22px 0 8px;font-size:15px">Was kommt am besten an?</h3>
+      <section class="panel wide">
+        <p class="desc">Jedes ${noun} mit den Social-Media-Aufrufen seines Tages und wie oft es in der App favorisiert und ${p === "wort" ? "benutzt" : "angewendet"} wurde (ohne Bots). Beliebtheit 100 = überall vorne.
+          <label class="small" style="float:right">Sortieren nach <select id="${id}-sort">${Object.entries(sorts).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label></p>
+        <div id="${id}-body" style="max-height:520px;overflow:auto">${body("score")}</div>
+      </section>`;
+    return { html, draw: () => { const s = $(`#${id}-sort`); if (s) s.onchange = () => { $(`#${id}-body`).innerHTML = body(s.value); }; } };
+  }
+
   async function renderSocial(p) {
     const title = `${PROJECTS[p].name} · Social Media`;
     view().innerHTML = head(title) + loading();
-    let html = head(title, "Reichweite der täglichen Videos und wo gepostet wurde (gesamter Zeitraum)");
+    let html = head(title, "Reichweite der täglichen Videos und wo gepostet wurde (gesamter Zeitraum)") + "<!--warn-->";
     const draws = [];
     {
       let posts = [];
@@ -1075,11 +1128,23 @@
       } catch (e) {
         html += `<div class="note-box">${/social_metrics/.test(e.message) ? "Die Tabelle für die Kennzahlen fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
       }
+      try {
+        const items = await rpc(p, "admin_item_stats");
+        const s = itemsSection(p, items, posts);
+        html += s.html;
+        draws.push(s.draw);
+      } catch (e) {
+        html += `<h3 style="margin:22px 0 8px;font-size:15px">Was kommt am besten an?</h3><div class="note-box">${/admin_item_stats/.test(e.message) ? "Dafür fehlt noch die Funktion – bitte das neue SQL ausführen." : esc(e.message)}</div>`;
+      }
       html += `<h3 style="margin:22px 0 8px;font-size:15px">Wurde gepostet?</h3>
-        <p class="legend"><span>✓ veröffentlicht (Klick öffnet den Beitrag)</span><span>✗ fehlgeschlagen</span><span>– kein Eintrag</span></p>`;
+        <p class="legend"><span>✓ veröffentlicht (Klick öffnet den Beitrag)</span><span class="bad-text">2× mehrfach gepostet</span><span>✗ fehlgeschlagen</span><span>– kein Eintrag</span></p>`;
       try {
         const rows = await api(p, `social_posts?select=day,platform,status,link,message,updated_at&order=day.desc`);
         const g = socialGrid(p, rows, posts);
+        const recent = g.dups.filter((x) => x.day >= shiftIso(todayIso(), -6));
+        if (recent.length) {
+          html = html.replace("<!--warn-->", `<div class="note-box warn-box"><b>Mehrfach gepostet in den letzten 7 Tagen:</b> ${recent.map((x) => `${esc(PLATFORM_NAMES[x.pl] || x.pl)} am ${shortDay(x.day)} (${x.n}×)`).join(", ")}. Überzählige Beiträge am besten auf der Plattform löschen.</div>`);
+        }
         html += `<p class="muted small">${g.summary}</p><section class="panel">${g.html}</section>`;
       } catch (e) {
         html += `<div class="note-box">${/social_posts/.test(e.message) ? "Die Tabelle für die Historie fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
