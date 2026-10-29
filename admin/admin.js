@@ -321,9 +321,8 @@
       <div class="tiles">
         <a class="tile accent-wort" href="#social" style="text-decoration:none"><div class="label">Social Media heute · Wort</div><div class="value" id="soc-wort">…</div><div class="hint" id="soc-wort-hint"></div></a>
         <a class="tile accent-zitat" href="#social" style="text-decoration:none"><div class="label">Social Media heute · Zitat</div><div class="value" id="soc-zitat">…</div><div class="hint" id="soc-zitat-hint"></div></a>
-        <a class="tile" href="#play" style="text-decoration:none"><div class="label">Google Play · Installationen gesamt</div><div class="value" id="play-total">…</div><div class="hint" id="play-hint"></div></a>
       </div>
-      <p class="muted small" style="margin-top:10px">Nutzerzahlen zählen Konten; Gäste ohne Konto werden nicht erfasst. Downloads stehen unter Google Play.</p>`;
+      <p class="muted small" style="margin-top:10px">Nutzerzahlen zählen Konten; Gäste ohne Konto werden nicht erfasst.</p>`;
   }
 
   async function loadVideoStatus() {
@@ -335,20 +334,6 @@
       el.textContent = s.text;
       el.parentElement.classList.toggle("warn", s.warn);
       $(`#soc-${p}-hint`).textContent = s.hint;
-    }
-    const el = $("#play-total");
-    if (!el) return;
-    try {
-      const rows = await api("zitat", `play_stats?select=package,day,total_user_installs&total_user_installs=not.is.null&order=day.desc&limit=20`);
-      const latest = {};
-      rows.forEach((r) => { if (!latest[r.package]) latest[r.package] = r; });
-      const w = latest["wort.des.tages"], z = latest["zitat.des.tages"];
-      if (!w && !z) { el.textContent = "–"; $("#play-hint").textContent = "Noch nicht eingerichtet"; return; }
-      el.textContent = fmt((w?.total_user_installs || 0) + (z?.total_user_installs || 0));
-      $("#play-hint").textContent = `Wort ${fmt(w?.total_user_installs)} · Zitat ${fmt(z?.total_user_installs)}`;
-    } catch {
-      el.textContent = "–";
-      $("#play-hint").textContent = "Noch nicht eingerichtet";
     }
   }
 
@@ -979,38 +964,37 @@
   const PLATFORM_NAMES = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", youtube: "YouTube", threads: "Threads", x: "X", pinterest: "Pinterest" };
   const SOCIAL_STATE = {
     sent: { icon: "✓", label: "Veröffentlicht", cls: "ok" },
-    scheduled: { icon: "◷", label: "Eingeplant", cls: "wait" },
+    scheduled: { icon: "✓", label: "Veröffentlicht", cls: "ok" }, // ältere Einträge der Zitat-Pipeline
     failed: { icon: "✗", label: "Fehlgeschlagen", cls: "bad" },
     skipped: { icon: "✗", label: "Nicht ausgeführt", cls: "bad" },
   };
 
-  async function loadSocial(p, days) {
-    const from = shiftIso(todayIso(), -(days - 1));
-    return api(p, `social_posts?select=day,platform,status,link,message,updated_at&day=gte.${from}&order=day.desc`);
-  }
-
-  function socialGrid(p, rows, days) {
-    const by = {};
+  // Historie aus den Pipeline-Einträgen, ergänzt um die tatsächlich gefundenen Beiträge (mit Link zum Beitrag)
+  function socialGrid(p, rows, posts) {
+    const by = {}, found = {};
     rows.forEach((r) => { by[`${r.day}|${r.platform}`] = r; });
-    const platforms = [...new Set([...PLATFORMS[p], ...rows.map((r) => r.platform)])];
+    posts.forEach((r) => { const k = `${r.day}|${r.platform}`; if (!found[k] || (!found[k].link && r.link)) found[k] = r; });
+    const platforms = [...new Set([...PLATFORMS[p], ...rows.map((r) => r.platform), ...posts.map((r) => r.platform)])];
     const today = todayIso();
-    const dayList = [...Array(days)].map((_, i) => shiftIso(today, -i));
+    const first = [...rows, ...posts].reduce((a, r) => (r.day < a ? r.day : a), today);
+    const dayList = [];
+    for (let d = today; d >= first; d = shiftIso(d, -1)) dayList.push(d);
     let ok = 0, bad = 0, missingDays = 0;
     const body = dayList.map((d) => {
       const cells = platforms.map((pl) => {
-        const r = by[`${d}|${pl}`];
-        if (!r) return `<td class="soc none" title="Kein Eintrag – nicht gepostet oder Lauf nicht gestartet">–</td>`;
-        const st = SOCIAL_STATE[r.status] || { icon: "?", label: r.status, cls: "wait" };
+        const r = by[`${d}|${pl}`], f = found[`${d}|${pl}`];
+        if (!r && !f) return `<td class="soc none" title="Kein Eintrag – nicht gepostet oder Lauf nicht gestartet">–</td>`;
+        const st = f ? SOCIAL_STATE.sent : SOCIAL_STATE[r.status] || { icon: "?", label: r.status, cls: "wait" };
         if (st.cls === "ok") ok++; else if (st.cls === "bad") bad++;
-        const title = `${PLATFORM_NAMES[pl] || pl}: ${st.label}${r.message ? ` – ${r.message}` : ""} (${dateTime(r.updated_at)})`;
-        const inner = r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener">${st.icon}</a>` : st.icon;
+        const title = `${PLATFORM_NAMES[pl] || pl}: ${st.label}${!f && r.message ? ` – ${r.message}` : ""}${f?.link ? " – Klick öffnet den Beitrag" : ""}`;
+        const inner = f?.link ? `<a href="${esc(f.link)}" target="_blank" rel="noopener">${st.icon}</a>` : st.icon;
         return `<td class="soc ${st.cls}" title="${esc(title)}">${inner}</td>`;
       }).join("");
-      const any = platforms.some((pl) => by[`${d}|${pl}`]);
+      const any = platforms.some((pl) => by[`${d}|${pl}`] || found[`${d}|${pl}`]);
       if (!any && d !== today) missingDays++;
       return `<tr${any ? "" : ' class="soc-missing"'}><td>${wdDay(d)}${d === today ? " <span class=\"muted small\">heute</span>" : ""}</td>${cells}</tr>`;
     }).join("");
-    const summary = `${fmt(ok)} veröffentlicht · ${fmt(bad)} fehlgeschlagen · ${fmt(missingDays)} Tage ganz ohne Eintrag`;
+    const summary = `${fmt(ok)} veröffentlicht · ${fmt(bad)} fehlgeschlagen · ${fmt(missingDays)} Tage ganz ohne Eintrag · seit ${shortDay(first)}`;
     return { summary, html: `<div class="table-wrap"><table class="soc-table"><thead><tr><th>Tag</th>${platforms.map((pl) => `<th class="soc">${esc(PLATFORM_NAMES[pl] || pl)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>` };
   }
 
@@ -1026,7 +1010,10 @@
     const sum = (k, list = rows) => list.reduce((a, r) => a + (Number(r[k]) || 0), 0);
     const platforms = [...new Set(rows.map((r) => r.platform))].sort((a, b) => sum("views", rows.filter((r) => r.platform === b)) - sum("views", rows.filter((r) => r.platform === a)));
     const today = todayIso();
-    const dayList = [...Array(30)].map((_, i) => shiftIso(today, i - 29));
+    const first = rows.reduce((a, r) => (r.day < a ? r.day : a), today);
+    const dayList = [];
+    for (let d = first; d <= today; d = shiftIso(d, 1)) dayList.push(d);
+    const since = `seit ${shortDay(first)}`;
     const series = platforms.map((pl) => ({
       label: PLATFORM_NAMES[pl] || pl,
       color: PLATFORM_COLOR[pl] || "#a1a1aa",
@@ -1044,7 +1031,7 @@
     const top = [...rows].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0)).slice(0, 10);
     const html = `
       <div class="tiles">
-        ${tile("Aufrufe", fmt(Math.round(sum("views"))), `${fmt(rows.length)} Beiträge in 30 Tagen`, `accent-${p}`)}
+        ${tile("Aufrufe", fmt(Math.round(sum("views"))), `${fmt(rows.length)} Beiträge ${since}`, `accent-${p}`)}
         ${tile("Reichweite", fmt(Math.round(sum("reach"))), "Erreichte Personen", `accent-${p}`)}
         ${tile("Likes", fmt(Math.round(sum("likes"))), "", `accent-${p}`)}
         ${tile("Kommentare", fmt(Math.round(sum("comments"))), "", `accent-${p}`)}
@@ -1052,8 +1039,8 @@
         ${tile("Gespeichert", fmt(Math.round(sum("saves"))), "", `accent-${p}`)}
       </div>
       <div class="charts" style="margin-top:14px">
-        ${panel(id("views"), "Aufrufe nach Plattform", "Nach Tag der Veröffentlichung · letzte 30 Tage", true, series)}
-        <section class="panel wide"><h3>Plattformen im Vergleich</h3><p class="desc">Letzte 30 Tage</p>
+        ${panel(id("views"), "Aufrufe nach Plattform", `Nach Tag der Veröffentlichung · ${since}`, true, series)}
+        <section class="panel wide"><h3>Plattformen im Vergleich</h3><p class="desc">Gesamter Zeitraum · bei X, Facebook und Pinterest zählen Impressionen als Aufrufe</p>
           ${table([
             { label: "Plattform", html: (x) => `<span class="dot" style="background:${PLATFORM_COLOR[x.pl] || "#a1a1aa"}"></span>${esc(PLATFORM_NAMES[x.pl] || x.pl)}` },
             { label: "Beiträge", get: (x) => fmt(x.posts), num: true },
@@ -1064,7 +1051,7 @@
             { label: "Geteilt", get: (x) => fmt(Math.round(x.shares)), num: true },
             { label: "Ø Wiedergabe", get: (x) => (x.avgWatch === null ? "–" : `${x.avgWatch.toLocaleString("de-DE", { maximumFractionDigits: 1 })} s`), num: true },
           ], per)}</section>
-        <section class="panel wide"><h3>Top-Beiträge</h3><p class="desc">Nach Aufrufen</p>
+        <section class="panel wide"><h3>Top-Beiträge</h3><p class="desc">Nach Aufrufen · Klick öffnet den Beitrag</p>
           ${table([
             { label: "Datum", get: (x) => shortDay(x.day) },
             { label: "Plattform", get: (x) => PLATFORM_NAMES[x.platform] || x.platform },
@@ -1078,32 +1065,32 @@
   }
 
   async function renderSocial() {
-    const days = 30;
     view().innerHTML = head("Social Media") + loading();
-    let html = head("Social Media", "Reichweite der täglichen Videos und wo gepostet wurde (letzte 30 Tage)");
+    let html = head("Social Media", "Reichweite der täglichen Videos und wo gepostet wurde (gesamter Zeitraum)");
     const draws = [];
     for (const p of ["wort", "zitat"]) {
       html += `<h2 class="section-title"><span class="dot ${p}"></span>${esc(PROJECTS[p].name)}</h2>`;
       if (!loggedIn(p)) { html += `<div class="note-box">Nicht angemeldet.</div>`; continue; }
+      let posts = [];
       try {
-        const rows = await api(p, `social_metrics?select=post_id,platform,day,link,text_snippet,views,reach,likes,comments,shares,saves,avg_watch_sec&day=gte.${shiftIso(todayIso(), -29)}&app=eq.${p}`);
-        const m = metricsSection(p, rows);
+        posts = await api(p, `social_metrics?select=post_id,platform,day,link,text_snippet,views,reach,likes,comments,shares,saves,avg_watch_sec&app=eq.${p}&order=day.desc`);
+        const m = metricsSection(p, posts);
         html += m.html;
         draws.push(m.draw);
       } catch (e) {
         html += `<div class="note-box">${/social_metrics/.test(e.message) ? "Die Tabelle für die Kennzahlen fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
       }
       html += `<h3 style="margin:22px 0 8px;font-size:15px">Wurde gepostet?</h3>
-        <p class="legend"><span>✓ veröffentlicht</span><span>◷ eingeplant</span><span>✗ fehlgeschlagen</span><span>– kein Eintrag</span></p>`;
+        <p class="legend"><span>✓ veröffentlicht (Klick öffnet den Beitrag)</span><span>✗ fehlgeschlagen</span><span>– kein Eintrag</span></p>`;
       try {
-        const rows = await loadSocial(p, days);
-        const g = socialGrid(p, rows, days);
+        const rows = await api(p, `social_posts?select=day,platform,status,link,message,updated_at&order=day.desc`);
+        const g = socialGrid(p, rows, posts);
         html += `<p class="muted small">${g.summary}</p><section class="panel">${g.html}</section>`;
       } catch (e) {
         html += `<div class="note-box">${/social_posts/.test(e.message) ? "Die Tabelle für die Historie fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
       }
     }
-    html += `<p class="muted small" style="margin-top:14px">Kennzahlen kommen täglich aus Buffer und wachsen noch einige Tage nach dem Posten. Die Posting-Historie schreiben die Video-Pipelines bei jedem Lauf; ältere Tage vor der Einrichtung sind leer. Follower-Zahlen liefert Buffer nicht.</p>`;
+    html += `<p class="muted small" style="margin-top:14px">Kennzahlen kommen täglich aus Buffer und wachsen noch einige Tage nach dem Posten. YouTube bei „Wort des Tages“ kommt aus dem öffentlichen Kanal-Feed: Aufrufe und Likes der jeweils neuesten 15 Videos, ältere behalten ihren letzten Stand. Follower-Zahlen liefert Buffer nicht.</p>`;
     view().innerHTML = html;
     draws.forEach((f) => f());
   }
@@ -1118,53 +1105,6 @@
     } catch {
       return { text: "–", hint: "Historie noch nicht eingerichtet", warn: false };
     }
-  }
-
-  // ---------- Google Play
-  async function renderPlay() {
-    view().innerHTML = head("Google Play") + loading();
-    if (!loggedIn("zitat")) { view().innerHTML = head("Google Play") + `<div class="note-box">Dafür musst du bei „Zitat des Tages“ angemeldet sein – dort werden die Play-Zahlen gespeichert.</div>`; return; }
-    let rows;
-    try { rows = await api("zitat", `play_stats?select=*&day=gte.${shiftIso(todayIso(), -90)}&order=day.asc`); }
-    catch (e) { view().innerHTML = head("Google Play") + `<div class="note-box">${/play_stats/.test(e.message) ? "Die Tabelle fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`; return; }
-    if (!rows.length) {
-      view().innerHTML = head("Google Play") + `<div class="note-box">Noch keine Daten. Die Zahlen kommen täglich aus den Berichten der Play Console, sobald der Google-Zugang eingerichtet ist. Nach dem Einrichten dauert es 1–2 Tage, bis Google die ersten Berichte bereitstellt.</div>`;
-      return;
-    }
-    const apps = [["wort", "wort.des.tages"], ["zitat", "zitat.des.tages"]];
-    let html = head("Google Play", "Aus den Berichten der Play Console (Stand: Vortag)");
-    const charts = [];
-    for (const [p, pkg] of apps) {
-      const r = rows.filter((x) => x.package === pkg);
-      html += `<h2 class="section-title"><span class="dot ${p}"></span>${esc(PROJECTS[p].name)}</h2>`;
-      if (!r.length) { html += `<div class="note-box">Noch keine Berichte für ${esc(pkg)}.</div>`; continue; }
-      const last = [...r].reverse().find((x) => x.total_user_installs !== null) || r[r.length - 1];
-      const sum = (n, k) => r.slice(-n).reduce((a, x) => a + (x[k] || 0), 0);
-      const rating = [...r].reverse().find((x) => x.total_avg_rating !== null);
-      html += `<div class="tiles">
-        ${tile("Installationen gesamt", fmt(last.total_user_installs), `Stand ${shortDay(last.day)}`, `accent-${p}`)}
-        ${tile("Aktive Geräte", fmt(last.active_device_installs), "App ist installiert", `accent-${p}`)}
-        ${tile("Neu installiert (7 / 30 Tage)", `${fmt(sum(7, "daily_user_installs"))} / ${fmt(sum(30, "daily_user_installs"))}`, "", `accent-${p}`)}
-        ${tile("Deinstalliert (7 / 30 Tage)", `${fmt(sum(7, "daily_user_uninstalls"))} / ${fmt(sum(30, "daily_user_uninstalls"))}`, "", `accent-${p}`)}
-        ${tile("Bewertung", rating ? `${Number(rating.total_avg_rating).toLocaleString("de-DE", { maximumFractionDigits: 2 })} ★` : "–", "Durchschnitt aller Bewertungen", `accent-${p}`)}
-      </div>
-      <div class="charts" style="margin-top:14px">
-        ${panel(`play-${p}-inst`, "Installationen und Deinstallationen pro Tag", "Letzte 90 Tage", true, [{ label: "Installiert", color: SERIES[0] }, { label: "Deinstalliert", color: SERIES[1] }])}
-        ${panel(`play-${p}-active`, "Aktive Geräte", "")}
-        ${panel(`play-${p}-rating`, "Bewertung (Durchschnitt)", "")}
-      </div>`;
-      charts.push(() => {
-        const labels = r.map((x) => shortDay(x.day));
-        lineChart(`play-${p}-inst`, labels, [
-          { label: "Installiert", color: SERIES[0], data: r.map((x) => x.daily_user_installs) },
-          { label: "Deinstalliert", color: SERIES[1], data: r.map((x) => x.daily_user_uninstalls) },
-        ]);
-        lineChart(`play-${p}-active`, labels, [{ label: "Aktive Geräte", color: PROJECTS[p].color, data: r.map((x) => x.active_device_installs) }]);
-        lineChart(`play-${p}-rating`, labels, [{ label: "Bewertung", color: PROJECTS[p].color, data: r.map((x) => x.total_avg_rating) }]);
-      });
-    }
-    view().innerHTML = html;
-    charts.forEach((f) => f());
   }
 
   // ---------- Alle Nutzer (beide Apps)
@@ -1253,7 +1193,6 @@
     "wort-ideas": ["wort", renderWortIdeas],
     "wort-users": ["wort", renderWortUsers],
     social: [null, renderSocial],
-    play: [null, renderPlay],
     "zitat-allusers": ["zitat", () => renderAllUsers("zitat")],
     "wort-allusers": ["wort", () => renderAllUsers("wort")],
   };
