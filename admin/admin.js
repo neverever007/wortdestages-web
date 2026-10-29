@@ -295,6 +295,7 @@
         ${tile("Aktiv (30 Tage)", fmt(s.active_30), s.active_30 ? `${Math.round((100 * s.active_today) / s.active_30)} % davon heute` : "", `accent-${p}`)}
         ${tile("Offene Aufgaben", fmt(open), "Vorschläge, Meldungen, Ideen", `accent-${p}${open ? " warn" : ""}`)}
         ${tile("Geplant bis", plan.text, plan.hint || "", `accent-${p}${plan.warn ? " warn" : ""}`)}
+        <a class="tile accent-${p}" href="#${p}-social" style="text-decoration:none"><div class="label">Social Media heute</div><div class="value" id="soc-${p}">…</div><div class="hint" id="soc-${p}-hint"></div></a>
       </div>`;
     }
 
@@ -317,12 +318,7 @@
   }
 
   function extrasHtml() {
-    return `<h2 class="section-title">Außerhalb der Apps</h2>
-      <div class="tiles">
-        <a class="tile accent-wort" href="#social" style="text-decoration:none"><div class="label">Social Media heute · Wort</div><div class="value" id="soc-wort">…</div><div class="hint" id="soc-wort-hint"></div></a>
-        <a class="tile accent-zitat" href="#social" style="text-decoration:none"><div class="label">Social Media heute · Zitat</div><div class="value" id="soc-zitat">…</div><div class="hint" id="soc-zitat-hint"></div></a>
-      </div>
-      <p class="muted small" style="margin-top:10px">Nutzerzahlen zählen Konten; Gäste ohne Konto werden nicht erfasst.</p>`;
+    return `<p class="muted small" style="margin-top:10px">Nutzerzahlen zählen Konten; Gäste ohne Konto werden nicht erfasst.</p>`;
   }
 
   async function loadVideoStatus() {
@@ -1064,13 +1060,12 @@
     return { html, draw: () => lineChart(id("views"), dayList.map(shortDay), series) };
   }
 
-  async function renderSocial() {
-    view().innerHTML = head("Social Media") + loading();
-    let html = head("Social Media", "Reichweite der täglichen Videos und wo gepostet wurde (gesamter Zeitraum)");
+  async function renderSocial(p) {
+    const title = `${PROJECTS[p].name} · Social Media`;
+    view().innerHTML = head(title) + loading();
+    let html = head(title, "Reichweite der täglichen Videos und wo gepostet wurde (gesamter Zeitraum)");
     const draws = [];
-    for (const p of ["wort", "zitat"]) {
-      html += `<h2 class="section-title"><span class="dot ${p}"></span>${esc(PROJECTS[p].name)}</h2>`;
-      if (!loggedIn(p)) { html += `<div class="note-box">Nicht angemeldet.</div>`; continue; }
+    {
       let posts = [];
       try {
         posts = await api(p, `social_metrics?select=post_id,platform,day,link,text_snippet,views,reach,likes,comments,shares,saves,avg_watch_sec&app=eq.${p}&order=day.desc`);
@@ -1090,7 +1085,7 @@
         html += `<div class="note-box">${/social_posts/.test(e.message) ? "Die Tabelle für die Historie fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
       }
     }
-    html += `<p class="muted small" style="margin-top:14px">Kennzahlen kommen täglich aus Buffer und wachsen noch einige Tage nach dem Posten. YouTube bei „Wort des Tages“ kommt aus dem öffentlichen Kanal-Feed: Aufrufe und Likes der jeweils neuesten 15 Videos, ältere behalten ihren letzten Stand. Follower-Zahlen liefert Buffer nicht.</p>`;
+    html += `<p class="muted small" style="margin-top:14px">Kennzahlen kommen täglich aus Buffer und wachsen noch einige Tage nach dem Posten. YouTube bei „Wort des Tages“ kommt aus dem öffentlichen Kanal-Feed: Aufrufe und Likes der jeweils neuesten 15 Videos, ältere behalten ihren letzten Stand. Follower-Zahlen liefert Buffer nicht.</p>`.replace(p === "wort" ? "" : /YouTube bei.*?Stand. /, "");
     view().innerHTML = html;
     draws.forEach((f) => f());
   }
@@ -1192,7 +1187,8 @@
     "wort-suggestions": ["wort", renderWortSuggestions],
     "wort-ideas": ["wort", renderWortIdeas],
     "wort-users": ["wort", renderWortUsers],
-    social: [null, renderSocial],
+    "zitat-social": ["zitat", () => renderSocial("zitat")],
+    "wort-social": ["wort", () => renderSocial("wort")],
     "zitat-allusers": ["zitat", () => renderAllUsers("zitat")],
     "wort-allusers": ["wort", () => renderAllUsers("wort")],
   };
