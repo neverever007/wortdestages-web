@@ -115,8 +115,8 @@ def og_wort(w, path):
         y += int(size * 1.15)
     meta = " · ".join(x for x in (w.get("lautschrift"), w.get("wortart")) if x)
     if meta:
-        d.text((82, y + 4), meta, font=font(SERIF, 30), fill="#a3a3a3")
-        y += 56
+        d.text((82, y + 18), meta, font=font(SERIF, 30), fill="#a3a3a3")
+        y += 70
     f2, lines2, s2 = fit(d, w.get("definition") or "", SERIF, 1040, 520 - y, 40, 26)
     y += 16
     for l in lines2:
