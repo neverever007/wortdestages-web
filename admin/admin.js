@@ -1068,65 +1068,6 @@
     return { html, draw: () => lineChart(id("views"), dayList.map(shortDay), series) };
   }
 
-  // Follower je Plattform (Tabelle social_followers, im Dashboard eingetragen – Buffer liefert keine Follower)
-  function followersSection(p, rows) {
-    const id = `fol-${p}`;
-    const platforms = PLATFORMS[p];
-    const by = {};
-    rows.forEach((r) => { (by[r.platform] = by[r.platform] || []).push(r); });
-    Object.values(by).forEach((l) => l.sort((a, b) => (a.day < b.day ? -1 : 1)));
-    const latest = (pl) => (by[pl] || []).at(-1);
-    // Stand vor rund 7 Tagen: letzter Eintrag bis dahin
-    const before = (pl, days) => [...(by[pl] || [])].reverse().find((r) => r.day <= shiftIso(todayIso(), -days));
-    const diff = (a, b) => (a && b ? a.followers - b.followers : null);
-    const sign = (n) => (n === null ? "–" : `${n > 0 ? "+" : ""}${fmt(n)}`);
-    const total = platforms.reduce((a, pl) => a + (latest(pl)?.followers || 0), 0);
-    const week = platforms.reduce((a, pl) => a + (diff(latest(pl), before(pl, 7)) || 0), 0);
-    const days = [...new Set(rows.map((r) => r.day))].sort();
-    const series = platforms.filter((pl) => by[pl]).map((pl) => {
-      let last = null;
-      return { label: PLATFORM_NAMES[pl] || pl, color: PLATFORM_COLOR[pl] || "#a1a1aa",
-        data: days.map((d) => { const r = by[pl].find((x) => x.day === d); if (r) last = r.followers; return last; }) };
-    });
-    const html = `
-      <h3 style="margin:22px 0 8px;font-size:15px">Follower</h3>
-      <div class="tiles">
-        ${tile("Follower gesamt", fmt(total), "Alle Plattformen, letzter Stand", `accent-${p}`)}
-        ${tile("Diese Woche", sign(week), "Veränderung in 7 Tagen", `accent-${p}`)}
-      </div>
-      <div class="charts" style="margin-top:14px">
-        <section class="panel wide"><p class="desc">Zahlen von den Profilen abschreiben und speichern – am besten einmal pro Woche. Leere Felder bleiben unverändert.</p>
-          <form id="${id}-form">${table([
-            { label: "Plattform", html: (pl) => `<span class="dot" style="background:${PLATFORM_COLOR[pl] || "#a1a1aa"}"></span>${esc(PLATFORM_NAMES[pl] || pl)}` },
-            { label: "Follower", get: (pl) => (latest(pl) ? fmt(latest(pl).followers) : "–"), num: true },
-            { label: "7 Tage", get: (pl) => sign(diff(latest(pl), before(pl, 7))), num: true },
-            { label: "30 Tage", get: (pl) => sign(diff(latest(pl), before(pl, 30))), num: true },
-            { label: "Stand", get: (pl) => (latest(pl) ? shortDay(latest(pl).day) : "–") },
-            { label: "Heute eintragen", html: (pl) => `<input type="number" min="0" inputmode="numeric" name="${pl}" placeholder="${latest(pl)?.followers ?? ""}" style="width:110px">` },
-          ], platforms)}
-          <div style="margin-top:10px;text-align:right"><span class="muted small" id="${id}-msg"></span> <button class="btn small primary" type="submit">Speichern</button></div></form>
-        </section>
-        ${series.length && days.length > 1 ? panel(`${id}-chart`, "Follower im Verlauf", "Je Plattform", true, series) : ""}
-      </div>`;
-    const draw = () => {
-      if (series.length && days.length > 1) lineChart(`${id}-chart`, days.map(shortDay), series);
-      const form = $(`#${id}-form`);
-      if (!form) return;
-      form.onsubmit = async (ev) => {
-        ev.preventDefault();
-        const body = [...new FormData(form)].filter(([, v]) => String(v).trim() !== "")
-          .map(([platform, v]) => ({ platform, day: todayIso(), followers: Math.round(Number(v)), updated_at: new Date().toISOString() }));
-        const msg = $(`#${id}-msg`);
-        if (!body.length) { msg.textContent = "Nichts eingetragen."; return; }
-        try {
-          await api(p, "social_followers", { method: "POST", body, prefer: "resolution=merge-duplicates" });
-          renderSocial(p);
-        } catch (e) { msg.textContent = e.message; }
-      };
-    };
-    return { html, draw };
-  }
-
   // Video und Post des Vortags auf allen Plattformen
   function yesterdaySection(p, rows) {
     const day = shiftIso(todayIso(), -1);
@@ -1208,13 +1149,6 @@
     let html = head(title, "Reichweite der täglichen Videos und wo gepostet wurde (gesamter Zeitraum)<!--stand-->", `<button class="btn small" id="soc-refresh">↻ Aktualisieren</button>`);
     let yesterday = "";
     const draws = [];
-    try {
-      const f = followersSection(p, await api(p, "social_followers?select=platform,day,followers&order=day.asc"));
-      html += f.html;
-      draws.push(f.draw);
-    } catch (e) {
-      html += `<h3 style="margin:22px 0 8px;font-size:15px">Follower</h3><div class="note-box">${/social_followers/.test(e.message) ? `Dafür fehlt noch die Tabelle – bitte das SQL „${p === "wort" ? "Wort" : "Zitat"}_4_Follower.sql“ ausführen.` : esc(e.message)}</div>`;
-    }
     {
       let posts = [];
       try {
