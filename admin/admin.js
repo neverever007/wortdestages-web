@@ -1068,6 +1068,36 @@
     return { html, draw: () => lineChart(id("views"), dayList.map(shortDay), series) };
   }
 
+  // Video und Post des Vortags auf allen Plattformen
+  function yesterdaySection(p, rows) {
+    const day = shiftIso(todayIso(), -1);
+    const list = rows.filter((r) => r.day === day);
+    const platforms = [...new Set([...PLATFORMS[p], ...list.map((r) => r.platform)])];
+    const lines = platforms.flatMap((pl) => {
+      const own = list.filter((r) => r.platform === pl).sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+      return own.length ? own : [{ platform: pl, missing: true }];
+    });
+    const sum = (k) => list.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+    const num = (x, k) => (x.missing || x[k] === null || x[k] === undefined ? "–" : fmt(Math.round(Number(x[k]))));
+    const stand = list.reduce((a, r) => (r.updated_at && r.updated_at > a ? r.updated_at : a), "");
+    return `
+      <h3 style="margin:22px 0 8px;font-size:15px">Gestern · ${wdDay(day)}</h3>
+      <div class="tiles">
+        ${tile("Aufrufe gestern", fmt(Math.round(sum("views"))), `${fmt(list.length)} Beiträge`, `accent-${p}`)}
+        ${tile("Likes gestern", fmt(Math.round(sum("likes"))), "", `accent-${p}`)}
+        ${tile("Kommentare gestern", fmt(Math.round(sum("comments"))), "", `accent-${p}`)}
+      </div>
+      <section class="panel wide" style="margin-top:14px"><p class="desc">Video bzw. Post vom Vortag je Plattform · Klick öffnet den Beitrag${stand ? ` · Stand ${dateTime(stand)}` : ""}</p>
+        ${table([
+          { label: "Plattform", html: (x) => `<span class="dot" style="background:${PLATFORM_COLOR[x.platform] || "#a1a1aa"}"></span>${esc(PLATFORM_NAMES[x.platform] || x.platform)}` },
+          { label: "Beitrag", html: (x) => (x.missing ? `<span class="muted">Noch keine Zahlen</span>` : x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.text_snippet || "ansehen")}</a>` : esc(x.text_snippet || "–")), clip: true },
+          { label: "Aufrufe", get: (x) => num(x, "views"), num: true },
+          { label: "Likes", get: (x) => num(x, "likes"), num: true },
+          { label: "Komm.", get: (x) => num(x, "comments"), num: true },
+          { label: "Geteilt", get: (x) => num(x, "shares"), num: true },
+        ], lines)}</section>`;
+  }
+
   // Welche Wörter/Zitate kommen an? Social-Aufrufe des Tages (je Plattform nur der stärkste Beitrag,
   // damit Mehrfach-Posts nicht doppelt zählen) neben Favoriten und Nutzung in der App.
   function itemsSection(p, items, posts) {
@@ -1121,9 +1151,9 @@
     {
       let posts = [];
       try {
-        posts = await api(p, `social_metrics?select=post_id,platform,day,link,text_snippet,views,reach,likes,comments,shares,saves,avg_watch_sec&app=eq.${p}&order=day.desc`);
+        posts = await api(p, `social_metrics?select=post_id,platform,day,link,text_snippet,views,reach,likes,comments,shares,saves,avg_watch_sec,updated_at&app=eq.${p}&order=day.desc`);
         const m = metricsSection(p, posts);
-        html += m.html;
+        html += yesterdaySection(p, posts) + `<h3 style="margin:22px 0 8px;font-size:15px">Gesamter Zeitraum</h3>` + m.html;
         draws.push(m.draw);
       } catch (e) {
         html += `<div class="note-box">${/social_metrics/.test(e.message) ? "Die Tabelle für die Kennzahlen fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
@@ -1150,7 +1180,7 @@
         html += `<div class="note-box">${/social_posts/.test(e.message) ? "Die Tabelle für die Historie fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
       }
     }
-    html += `<p class="muted small" style="margin-top:14px">Kennzahlen kommen täglich aus Buffer und wachsen noch einige Tage nach dem Posten. YouTube bei „Wort des Tages“ kommt aus dem öffentlichen Kanal-Feed: Aufrufe und Likes der jeweils neuesten 15 Videos, ältere behalten ihren letzten Stand. Follower-Zahlen liefert Buffer nicht.</p>`.replace(p === "wort" ? "" : /YouTube bei.*?Stand. /, "");
+    html += `<p class="muted small" style="margin-top:14px">Kennzahlen kommen alle 3 Stunden aus Buffer und wachsen noch einige Tage nach dem Posten. YouTube bei „Wort des Tages“ kommt aus dem öffentlichen Kanal-Feed: Aufrufe und Likes der jeweils neuesten 15 Videos, ältere behalten ihren letzten Stand. Follower-Zahlen liefert Buffer nicht.</p>`.replace(p === "wort" ? "" : /YouTube bei.*?Stand. /, "");
     view().innerHTML = html;
     draws.forEach((f) => f());
   }
