@@ -504,8 +504,9 @@
       `<div class="plan">${list.map((r) => `
         <div class="plan-row${r.text ? "" : " gap"}${r.day === today ? " today" : ""}" data-day="${r.day}" tabindex="0">
           <div class="date"><b>${wdDay(r.day)}</b>${r.day === today ? "heute" : ""}</div>
-          <div class="content"><div class="main">${r.text ? esc(r.text) : (r.day < today ? "Zufälliges Zitat (beim Abruf vergeben)" : "Noch nicht geplant – wird sonst automatisch gewählt")}</div>
-            ${r.text ? `<div class="by">— ${esc(r.author)}${r.source ? ` · ${esc(r.source)}` : ""}${r.year ? ` · ${esc(r.year)}` : ""}</div>` : ""}</div>
+          <div class="content">${r.kracher ? `<div class="kracher${r.text && !r.funny ? " bad-text" : ""}">☺ Freitags-Kracher${r.text && !r.funny ? " – aber kein lustiges Zitat" : ""}</div>` : ""}<div class="main">${r.text ? esc(r.text) : (r.day < today ? "Zufälliges Zitat (beim Abruf vergeben)" : "Noch nicht geplant – wird sonst automatisch gewählt")}</div>
+            ${r.text ? `<div class="by">— ${esc(r.author)}${r.source ? ` · ${esc(r.source)}` : ""}${r.year ? ` · ${esc(r.year)}` : ""}</div>` : ""}
+            ${r.meme ? `<div class="by meme">Meme: ${esc(r.meme)}</div>` : ""}</div>
           <span class="muted small">${r.text ? "Bearbeiten" : "Planen"}</span>
         </div>`).join("")}</div>`;
     bindPlanToolbar();
@@ -551,7 +552,12 @@
     [{ name: "author", label: "Autor", value: q.author, required: true }, { name: "year", label: "Jahr", value: q.year, placeholder: "z. B. 1903" }],
     { name: "source", label: "Quelle", value: q.source, placeholder: "Werk, Rede, Brief …" },
     { name: "explanation", label: "Zum Zitat (Erklärung)", type: "textarea", value: q.explanation },
+    { name: "meme", label: "Meme des Tages (Jugendsprache)", type: "textarea", value: q.meme, placeholder: "Dasselbe Zitat in Jugendsprache – erscheint, wenn man in der App auf „Zitat des Tages“ tippt" },
+    { name: "funny", label: "Art", type: "select", value: (q.funny ?? q.kracher) ? "1" : "0",
+      options: [{ value: "0", label: "Normales Zitat" }, { value: "1", label: "Lustig – Freitags-Kracher" }],
+      help: "Freitage (außer Feiertage) bekommen automatisch lustige Zitate, alle anderen Tage normale." },
   ];
+  const quoteExtras = (d) => ({ p_meme: nullIfEmpty(d.meme), p_funny: d.funny === "1" });
 
   function editZitatDay(r) {
     formDialog({
@@ -559,7 +565,7 @@
       fields: quoteFields(r),
       danger: r.text ? "Tag leeren" : null,
       onSubmit: async (d) => {
-        await rpc("zitat", "admin_set_day", { p_day: r.day, p_text: d.text, p_author: d.author, p_source: nullIfEmpty(d.source), p_year: nullIfEmpty(d.year), p_explanation: nullIfEmpty(d.explanation) });
+        await rpc("zitat", "admin_set_day", { p_day: r.day, p_text: d.text, p_author: d.author, p_source: nullIfEmpty(d.source), p_year: nullIfEmpty(d.year), p_explanation: nullIfEmpty(d.explanation), ...quoteExtras(d) });
         toast("Gespeichert");
         stats.zitat = null;
         renderZitatPlan();
@@ -580,7 +586,7 @@
       fields: quoteFields(),
       submit: "Hinzufügen",
       onSubmit: async (d) => {
-        await rpc("zitat", "admin_add_quote", { p_text: d.text, p_author: d.author, p_source: nullIfEmpty(d.source), p_day: null, p_year: nullIfEmpty(d.year), p_explanation: nullIfEmpty(d.explanation) });
+        await rpc("zitat", "admin_add_quote", { p_text: d.text, p_author: d.author, p_source: nullIfEmpty(d.source), p_day: null, p_year: nullIfEmpty(d.year), p_explanation: nullIfEmpty(d.explanation), ...quoteExtras(d) });
         toast("Zitat hinzugefügt");
         stats.zitat = null;
       },

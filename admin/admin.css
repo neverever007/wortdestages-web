@@ -189,3 +189,6 @@ td.soc.dup a { color: inherit; }
 /* Beliebtheit */
 .meter { display: inline-block; width: 60px; height: 6px; border-radius: 3px; background: var(--surface-2); vertical-align: middle; overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--soft); border-radius: 3px; }
+.plan-row .kracher { font-size: 12px; font-weight: 600; color: #e0a43a; letter-spacing: .04em; margin-bottom: 3px; }
+.plan-row .kracher.bad-text { color: var(--bad); }
+.plan-row .by.meme { font-style: italic; }
