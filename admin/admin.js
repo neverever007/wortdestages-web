@@ -1146,14 +1146,18 @@
   async function renderSocial(p) {
     const title = `${PROJECTS[p].name} · Social Media`;
     view().innerHTML = head(title) + loading();
-    let html = head(title, "Reichweite der täglichen Videos und wo gepostet wurde (gesamter Zeitraum)") + "<!--warn-->";
+    let html = head(title, "Reichweite der täglichen Videos und wo gepostet wurde (gesamter Zeitraum)<!--stand-->", `<button class="btn small" id="soc-refresh">↻ Aktualisieren</button>`);
+    let yesterday = "";
     const draws = [];
     {
       let posts = [];
       try {
         posts = await api(p, `social_metrics?select=post_id,platform,day,link,text_snippet,views,reach,likes,comments,shares,saves,avg_watch_sec,updated_at&app=eq.${p}&order=day.desc`);
         const m = metricsSection(p, posts);
-        html += yesterdaySection(p, posts) + `<h3 style="margin:22px 0 8px;font-size:15px">Gesamter Zeitraum</h3>` + m.html;
+        html += m.html;
+        yesterday = yesterdaySection(p, posts);
+        const stand = posts.reduce((a, r) => (r.updated_at && r.updated_at > a ? r.updated_at : a), "");
+        if (stand) html = html.replace("<!--stand-->", ` · Zahlen von ${dateTime(stand)}`);
         draws.push(m.draw);
       } catch (e) {
         html += `<div class="note-box">${/social_metrics/.test(e.message) ? "Die Tabelle für die Kennzahlen fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
@@ -1171,17 +1175,16 @@
       try {
         const rows = await api(p, `social_posts?select=day,platform,status,link,message,updated_at&order=day.desc`);
         const g = socialGrid(p, rows, posts);
-        const recent = g.dups.filter((x) => x.day >= shiftIso(todayIso(), -6));
-        if (recent.length) {
-          html = html.replace("<!--warn-->", `<div class="note-box warn-box"><b>Mehrfach gepostet in den letzten 7 Tagen:</b> ${recent.map((x) => `${esc(PLATFORM_NAMES[x.pl] || x.pl)} am ${shortDay(x.day)} (${x.n}×)`).join(", ")}. Überzählige Beiträge am besten auf der Plattform löschen.</div>`);
-        }
         html += `<p class="muted small">${g.summary}</p><section class="panel">${g.html}</section>`;
       } catch (e) {
         html += `<div class="note-box">${/social_posts/.test(e.message) ? "Die Tabelle für die Historie fehlt noch – bitte das SQL ausführen." : esc(e.message)}</div>`;
       }
     }
-    html += `<p class="muted small" style="margin-top:14px">Kennzahlen kommen alle 3 Stunden aus Buffer und wachsen noch einige Tage nach dem Posten. YouTube bei „Wort des Tages“ kommt aus dem öffentlichen Kanal-Feed: Aufrufe und Likes der jeweils neuesten 15 Videos, ältere behalten ihren letzten Stand. Follower-Zahlen liefert Buffer nicht.</p>`.replace(p === "wort" ? "" : /YouTube bei.*?Stand. /, "");
-    view().innerHTML = html;
+    html += yesterday;
+    html += `<p class="muted small" style="margin-top:14px">Kennzahlen kommen alle 2 Stunden aus Buffer und wachsen noch einige Tage nach dem Posten. Aufrufe und Likes bei YouTube kommen zusätzlich aus dem öffentlichen Kanal-Feed (neueste 15 Videos), ältere behalten ihren letzten Stand. Follower-Zahlen liefert Buffer nicht.</p>`;
+    view().innerHTML = html.replace("<!--stand-->", "");
+    const btn = $("#soc-refresh");
+    if (btn) btn.onclick = () => renderSocial(p);
     draws.forEach((f) => f());
   }
 
