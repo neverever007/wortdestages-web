@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-01</lastmod></url>
-  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-01</lastmod></url>
+  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-02</lastmod></url>
+  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-02</lastmod></url>
   <url><loc>https://wortdestages.eu/apps.html</loc></url>
   <url><loc>https://wortdestages.eu/wort/aberwitz/</loc><lastmod>2026-10-25</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/absonderlich/</loc><lastmod>2026-10-02</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/abstrus/</loc><lastmod>2026-10-26</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/aequinoktium/</loc><lastmod>2026-09-23</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/akribie/</loc><lastmod>2026-07-07</lastmod></url>
+  <url><loc>https://wortdestages.eu/wort/allerseelen/</loc><lastmod>2026-11-02</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/ambiguitaet/</loc><lastmod>2026-09-27</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/ambivalenz/</loc><lastmod>2026-07-12</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/anklang/</loc><lastmod>2026-09-22</lastmod></url>
@@ -173,4 +174,5 @@
   <url><loc>https://wortdestages.eu/zitat/2026-10-30/</loc><lastmod>2026-10-30</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-10-31/</loc><lastmod>2026-10-31</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-11-01/</loc><lastmod>2026-11-01</lastmod></url>
+  <url><loc>https://wortdestages.eu/zitat/2026-11-02/</loc><lastmod>2026-11-02</lastmod></url>
 </urlset>
