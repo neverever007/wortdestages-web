@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-03</lastmod></url>
-  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-03</lastmod></url>
+  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wortdestages.eu/apps.html</loc></url>
   <url><loc>https://wortdestages.eu/wort/aberwitz/</loc><lastmod>2026-10-25</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/absonderlich/</loc><lastmod>2026-10-02</lastmod></url>
@@ -129,6 +129,7 @@
   <url><loc>https://wortdestages.eu/wort/tohuwabohu/</loc><lastmod>2026-08-16</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/transzendenz/</loc><lastmod>2026-09-17</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/traulichkeit/</loc><lastmod>2026-06-14</lastmod></url>
+  <url><loc>https://wortdestages.eu/wort/truebsinn/</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/trugbild/</loc><lastmod>2026-10-18</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/unbill/</loc><lastmod>2026-08-03</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/unruhestand/</loc><lastmod>2026-10-13</lastmod></url>
@@ -177,4 +178,5 @@
   <url><loc>https://wortdestages.eu/zitat/2026-11-01/</loc><lastmod>2026-11-01</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-11-02/</loc><lastmod>2026-11-02</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-11-03/</loc><lastmod>2026-11-03</lastmod></url>
+  <url><loc>https://wortdestages.eu/zitat/2026-11-04/</loc><lastmod>2026-11-04</lastmod></url>
 </urlset>
