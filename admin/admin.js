@@ -1286,7 +1286,7 @@
         { name: "title", label: "Was ist passiert?", value: r.title, required: true, placeholder: "z. B. Veröffentlichung im Play Store" },
         [{ name: "day", label: "Datum", type: "date", value: r.day || todayIso(), required: true },
           { name: "app", label: "App", type: "select", value: r.app || "beide", options: Object.entries(MILESTONE_APPS).map(([value, label]) => ({ value, label })) }],
-        { name: "note", label: "Notiz (optional)", type: "textarea", value: r.note },
+        { name: "note", label: "Text (optional, öffentlich sichtbar)", type: "textarea", value: r.note },
       ],
       danger: r.id ? "Löschen" : null,
       onSubmit: async (d) => {
@@ -1319,7 +1319,9 @@
     }
     const today = todayIso();
     const years = [...new Set(rows.map((r) => r.day.slice(0, 4)))];
-    view().innerHTML = head(title, rows.length ? `${fmt(rows.length)} ${rows.length === 1 ? "Eintrag" : "Einträge"}` : "", add) + (rows.length
+    view().innerHTML = head(title, rows.length ? `${fmt(rows.length)} ${rows.length === 1 ? "Eintrag" : "Einträge"}` : "", add)
+      + `<div class="note-box">Einträge erscheinen ab ihrem Datum öffentlich auf <a href="/meilensteine.html" target="_blank" rel="noopener">wortdestages.eu/meilensteine.html</a>. Geplante Einträge siehst bis dahin nur du.</div>`
+      + (rows.length
       ? years.map((y) => `<h3 class="ms-year">${y}</h3><div class="timeline">${rows.filter((r) => r.day.startsWith(y)).map((r) => `
           <div class="ms-row accent-${r.app}" data-id="${r.id}" tabindex="0">
             <div class="ms-date">${wdDay(r.day)}${r.day > today ? `<span class="ms-soon">geplant</span>` : ""}</div>

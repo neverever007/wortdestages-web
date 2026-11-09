@@ -108,7 +108,38 @@
     show(location.hash === "#zitate" ? "zitate" : "woerter");
   }
 
+  // ---------- Meilensteine (geplante Einträge bleiben bis zu ihrem Datum unsichtbar)
+
+  const MILESTONE_APPS = {
+    beide: { label: "Beide Apps", icons: ["img/wort-icon.webp", "img/zitat-icon.png"] },
+    wort: { label: "Wort des Tages", icons: ["img/wort-icon.webp"] },
+    zitat: { label: "Zitat des Tages", icons: ["img/zitat-icon.png"] },
+  };
+
+  async function milestones() {
+    const el = document.getElementById("milestones");
+    try {
+      const rows = await sb(CFG.zitat, `milestones?select=day,title,note,app&day=lte.${todayIso}&order=day.desc,id.desc`);
+      const years = [...new Set(rows.map((r) => r.day.slice(0, 4)))];
+      el.innerHTML = years.map((y) => `
+        <h2 class="ms-year">${y}</h2>
+        <ol class="ms-list">${rows.filter((r) => r.day.startsWith(y)).map((r) => {
+          const app = MILESTONE_APPS[r.app] || MILESTONE_APPS.beide;
+          return `
+          <li class="ms ms-${MILESTONE_APPS[r.app] ? r.app : "beide"}">
+            <time datetime="${r.day}">${shortDate(r.day)}</time>
+            <h3>${esc(r.title)}</h3>
+            <div class="ms-app"><span class="icons">${app.icons.map((i) => `<img src="${i}" alt="">`).join("")}</span>${app.label}</div>
+            ${r.note ? `<p>${esc(r.note)}</p>` : ""}
+          </li>`;
+        }).join("")}</ol>`).join("") || `<p class="skeleton">Die ersten Meilensteine folgen bald.</p>`;
+    } catch {
+      el.innerHTML = failed("Die Meilensteine");
+    }
+  }
+
   const page = document.body.dataset.page;
-  if (page === "archiv") archive();
+  if (page === "meilensteine") milestones();
+  else if (page === "archiv") archive();
   else if (page === "home") home();
 })();

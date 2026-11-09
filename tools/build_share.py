@@ -173,7 +173,7 @@ def page(kind, url, title, description, date_iso, body, extra_head=""):
 <body data-page="share">
 <header class="top"><div class="wrap">
   <a class="brand" href="../../index.html"><span class="icons"><img src="../../img/wort-icon.webp" alt=""><img src="../../img/zitat-icon.png" alt=""></span>Wort &amp; Zitat des Tages</a>
-  <nav class="nav"><a href="../../index.html">Heute</a><a href="../../archiv.html">Archiv</a><a href="../../apps.html">Apps</a></nav>
+  <nav class="nav"><a href="../../index.html">Heute</a><a href="../../archiv.html">Archiv</a><a href="../../apps.html">Apps</a><a href="../../meilensteine.html">Meilensteine</a></nav>
 </div></header>
 <main>
 <section class="wrap share">
@@ -255,7 +255,7 @@ def zitat_page(q):
 
 
 def sitemap():
-    urls = [(f"{SITE}/", TODAY.isoformat()), (f"{SITE}/archiv.html", TODAY.isoformat()), (f"{SITE}/apps.html", None)]
+    urls = [(f"{SITE}/", TODAY.isoformat()), (f"{SITE}/archiv.html", TODAY.isoformat()), (f"{SITE}/apps.html", None), (f"{SITE}/meilensteine.html", None)]
     for kind in ("wort", "zitat"):
         for f in sorted((ROOT / kind).glob("*/index.html")):
             m = re.search(r'<time datetime="([\d-]+)"', f.read_text(encoding="utf-8"))

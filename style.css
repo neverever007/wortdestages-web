@@ -133,6 +133,27 @@ img { max-width: 100%; display: block; }
 .entry .quote { font-size: 21px; }
 .entry .definition { font-size: 16px; margin-top: 6px; }
 
+/* ---------- Meilensteine */
+.milestones { max-width: 720px; padding: 12px 0 56px; }
+.ms-year { font: 400 26px/1.2 var(--serif); margin: 26px 0 18px; }
+.ms-list { list-style: none; margin: 0 0 0 7px; padding: 0; border-left: 2px solid var(--line); }
+.ms { position: relative; padding: 0 0 30px 26px; }
+.ms:last-child { padding-bottom: 6px; }
+.ms::before {
+  content: ""; position: absolute; left: -8px; top: 5px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--dot); box-shadow: 0 0 0 4px var(--bg);
+}
+.ms-beide { --dot: var(--text); }
+.ms-wort { --dot: var(--wort-accent); }
+.ms-zitat { --dot: var(--zitat-accent); }
+.ms time { display: block; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.ms h3 { font: 600 22px/1.3 var(--serif); margin: 2px 0 8px; overflow-wrap: anywhere; }
+.ms-app { display: flex; align-items: center; gap: 8px; color: var(--soft); font-size: 14px; }
+.ms-app .icons { display: flex; }
+.ms-app img { width: 20px; height: 20px; border-radius: 5px; }
+.ms-app img + img { margin-left: -5px; box-shadow: 0 0 0 2px var(--bg); }
+.ms p { margin: 10px 0 0; color: var(--soft); font-size: 16px; white-space: pre-line; overflow-wrap: anywhere; }
+
 /* ---------- Rechtliches */
 .legal { max-width: 720px; padding: 40px 0 72px; }
 .legal h1 { font: 400 40px/1.2 var(--serif); margin: 0 0 24px; }
@@ -145,6 +166,11 @@ img { max-width: 100%; display: block; }
 .foot nav { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .foot a { text-decoration: none; }
 .foot a:hover { color: var(--text); }
+
+/* Reichen Name und Menü nicht nebeneinander, rutscht das Menü in eine eigene Zeile */
+@media (max-width: 640px) {
+  .top .wrap { height: auto; flex-wrap: wrap; gap: 8px 16px; padding-top: 12px; padding-bottom: 12px; }
+}
 
 @media (max-width: 560px) {
   .nav { gap: 14px; font-size: 14px; }
