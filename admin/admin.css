@@ -192,3 +192,15 @@ td.soc.dup a { color: inherit; }
 .plan-row .kracher { font-size: 12px; font-weight: 600; color: #e0a43a; letter-spacing: .04em; margin-bottom: 3px; }
 .plan-row .kracher.bad-text { color: var(--bad); }
 .plan-row .by.meme { font-style: italic; }
+.ms-year { font-size: 15px; margin: 20px 0 8px; color: var(--soft); }
+.timeline { display: flex; flex-direction: column; gap: 8px; }
+.ms-row { display: grid; grid-template-columns: 112px 1fr; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--soft); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+.ms-row:hover { border-color: #3a3a40; }
+.ms-row.accent-zitat { border-left-color: var(--zitat, #c9445c); }
+.ms-row.accent-wort { border-left-color: var(--wort, #22d3ee); }
+.ms-date { color: var(--soft); font-size: 13px; }
+.ms-soon { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.ms-body b { font-weight: 600; }
+.ms-app { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.ms-body p { margin: 8px 0 0; color: var(--soft); font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
+@media (max-width: 560px) { .ms-row { grid-template-columns: 1fr; gap: 4px; } }

@@ -1276,10 +1276,70 @@
     draw();
   }
 
+  // ---------- Meilensteine (gespeichert im Zitat-Projekt, gelten für beide Apps)
+  const MILESTONE_APPS = { beide: "Beide Apps", zitat: "Zitat des Tages", wort: "Wort des Tages" };
+
+  function editMilestone(r = {}) {
+    formDialog({
+      title: r.id ? "Meilenstein bearbeiten" : "Neuer Meilenstein",
+      fields: [
+        { name: "title", label: "Was ist passiert?", value: r.title, required: true, placeholder: "z. B. Veröffentlichung im Play Store" },
+        [{ name: "day", label: "Datum", type: "date", value: r.day || todayIso(), required: true },
+          { name: "app", label: "App", type: "select", value: r.app || "beide", options: Object.entries(MILESTONE_APPS).map(([value, label]) => ({ value, label })) }],
+        { name: "note", label: "Notiz (optional)", type: "textarea", value: r.note },
+      ],
+      danger: r.id ? "Löschen" : null,
+      onSubmit: async (d) => {
+        if (!d.title || !d.day) throw new Error("Bitte Titel und Datum angeben.");
+        const body = { title: d.title, day: d.day, app: d.app, note: nullIfEmpty(d.note) };
+        if (r.id) await api("zitat", `milestones?id=eq.${Number(r.id)}`, { method: "PATCH", body, prefer: "return=minimal" });
+        else await api("zitat", "milestones", { method: "POST", body, prefer: "return=minimal" });
+        toast("Gespeichert");
+        renderMilestones();
+      },
+      onDanger: async () => {
+        if (!confirm("Diesen Meilenstein wirklich löschen?")) throw new Error("Abgebrochen");
+        await api("zitat", `milestones?id=eq.${Number(r.id)}`, { method: "DELETE" });
+        toast("Gelöscht");
+        renderMilestones();
+      },
+    });
+  }
+
+  async function renderMilestones() {
+    const title = "Meilensteine";
+    const add = `<button class="btn small primary" data-add>+ Meilenstein</button>`;
+    view().innerHTML = head(title, "", add) + loading();
+    let rows;
+    try {
+      rows = await api("zitat", "milestones?select=id,day,title,note,app&order=day.desc,id.desc");
+    } catch (e) {
+      view().innerHTML = head(title) + `<div class="note-box">${/milestones/.test(e.message) ? "Dafür fehlt noch die Tabelle – bitte das SQL „Zitat_9_Meilensteine.sql“ ausführen." : esc(e.message)}</div>`;
+      return;
+    }
+    const today = todayIso();
+    const years = [...new Set(rows.map((r) => r.day.slice(0, 4)))];
+    view().innerHTML = head(title, rows.length ? `${fmt(rows.length)} ${rows.length === 1 ? "Eintrag" : "Einträge"}` : "", add) + (rows.length
+      ? years.map((y) => `<h3 class="ms-year">${y}</h3><div class="timeline">${rows.filter((r) => r.day.startsWith(y)).map((r) => `
+          <div class="ms-row accent-${r.app}" data-id="${r.id}" tabindex="0">
+            <div class="ms-date">${wdDay(r.day)}${r.day > today ? `<span class="ms-soon">geplant</span>` : ""}</div>
+            <div class="ms-body"><b>${esc(r.title)}</b><span class="ms-app">${esc(MILESTONE_APPS[r.app] || r.app)}</span>${r.note ? `<p>${esc(r.note)}</p>` : ""}</div>
+          </div>`).join("")}</div>`).join("")
+      : `<div class="note-box">Noch keine Meilensteine. Trag den ersten ein, zum Beispiel die Veröffentlichung im Play Store.</div>`);
+    view().querySelector("[data-add]").addEventListener("click", () => editMilestone());
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+    view().querySelectorAll(".ms-row").forEach((el) => {
+      const open = () => editMilestone(byId[el.dataset.id]);
+      el.addEventListener("click", open);
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
+    });
+  }
+
   // ---------------------------------------------------------------- Navigation
 
   const ROUTES = {
     overview: [null, renderOverview],
+    milestones: ["zitat", renderMilestones],
     "zitat-stats": ["zitat", renderZitatStats],
     "zitat-plan": ["zitat", renderZitatPlan],
     "zitat-suggestions": ["zitat", renderZitatSuggestions],
