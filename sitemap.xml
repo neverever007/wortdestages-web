@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-08</lastmod></url>
-  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-08</lastmod></url>
+  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-09</lastmod></url>
   <url><loc>https://wortdestages.eu/apps.html</loc></url>
   <url><loc>https://wortdestages.eu/wort/aberwitz/</loc><lastmod>2026-10-25</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/absonderlich/</loc><lastmod>2026-10-02</lastmod></url>
@@ -34,6 +34,7 @@
   <url><loc>https://wortdestages.eu/wort/einkehr/</loc><lastmod>2026-09-13</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/eintracht/</loc><lastmod>2026-10-03</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/ephemer/</loc><lastmod>2026-09-16</lastmod></url>
+  <url><loc>https://wortdestages.eu/wort/erinnerungskultur/</loc><lastmod>2026-11-09</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/erntemond/</loc><lastmod>2026-08-01</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/eskapade/</loc><lastmod>2026-07-09</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/euphorie/</loc><lastmod>2026-07-29</lastmod></url>
@@ -187,4 +188,5 @@
   <url><loc>https://wortdestages.eu/zitat/2026-11-06/</loc><lastmod>2026-11-06</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-11-07/</loc><lastmod>2026-11-07</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-11-08/</loc><lastmod>2026-11-08</lastmod></url>
+  <url><loc>https://wortdestages.eu/zitat/2026-11-09/</loc><lastmod>2026-11-09</lastmod></url>
 </urlset>
