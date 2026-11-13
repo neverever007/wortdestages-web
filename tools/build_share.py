@@ -166,7 +166,8 @@ def page(kind, url, title, description, date_iso, body, extra_head=""):
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0c0c0d">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f4f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c0c0d">
 <link rel="icon" href="../../img/wort-icon.webp" type="image/webp">
 <link rel="stylesheet" href="../../style.css">
 {extra_head}</head>

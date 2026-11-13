@@ -13,9 +13,32 @@
   --good: #3fb37f;
   --warn: #e0a43a;
   --bad: #e66767;
+  --line-strong: #3a3a40;
+  --warn-line: #5a4515;
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: dark;
+}
+
+/* Heller Modus, wenn Handy oder PC hell eingestellt sind */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f4f5;
+    --surface: #ffffff;
+    --surface-2: #f0f0f2;
+    --line: #e4e4e7;
+    --line-strong: #c9c9cf;
+    --text: #18181b;
+    --soft: #52525b;
+    --muted: #71717a;
+    --wort: #0e9fa4;
+    --zitat: #ae3049;
+    --good: #22875a;
+    --warn: #b7791f;
+    --warn-line: #e8c98a;
+    --bad: #c53030;
+    color-scheme: light;
+  }
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -32,7 +55,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 
 /* ---------- Buttons & Felder */
 .btn { font: 600 14px/1 var(--sans); border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); padding: 10px 14px; cursor: pointer; }
-.btn:hover { border-color: #3a3a40; }
+.btn:hover { border-color: var(--line-strong); }
 .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
 .btn.danger { color: var(--bad); }
 .btn.good { color: var(--good); }
@@ -92,7 +115,7 @@ legend { padding: 0 6px; font-size: 13px; color: var(--soft); }
 .tile .label { color: var(--soft); font-size: 13px; }
 .tile .value { font: 600 28px/1.15 var(--sans); margin-top: 6px; font-variant-numeric: tabular-nums; }
 .tile .hint { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
-.tile.warn { border-color: #5a4515; }
+.tile.warn { border-color: var(--warn-line); }
 .tile.warn .value { color: var(--warn); }
 .tile.accent-zitat { border-top: 3px solid var(--zitat); }
 .tile.accent-wort { border-top: 3px solid var(--wort); }
@@ -127,7 +150,7 @@ tr:last-child td { border-bottom: 0; }
 /* Planung */
 .plan { display: grid; gap: 6px; }
 .plan-row { display: grid; grid-template-columns: 112px 1fr auto; gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; }
-.plan-row:hover { border-color: #3a3a40; }
+.plan-row:hover { border-color: var(--line-strong); }
 .plan-row .date { color: var(--soft); font-size: 13px; }
 .plan-row .date b { color: var(--text); display: block; font-size: 15px; }
 .plan-row .content { min-width: 0; }
@@ -178,7 +201,7 @@ td.soc.wait { color: var(--warn); }
 td.soc.bad { color: var(--bad); background: rgba(230, 103, 103, .08); }
 td.soc.none { color: var(--muted); }
 tr.soc-missing td:first-child { color: var(--bad); }
-a.tile:hover { border-color: #3a3a40; }
+a.tile:hover { border-color: var(--line-strong); }
 
 /* Mehrfach gepostet */
 td.soc.dup { color: var(--bad); background: rgba(230, 103, 103, .16); font-weight: 700; font-size: 12px; }
@@ -189,13 +212,13 @@ td.soc.dup a { color: inherit; }
 /* Beliebtheit */
 .meter { display: inline-block; width: 60px; height: 6px; border-radius: 3px; background: var(--surface-2); vertical-align: middle; overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--soft); border-radius: 3px; }
-.plan-row .kracher { font-size: 12px; font-weight: 600; color: #e0a43a; letter-spacing: .04em; margin-bottom: 3px; }
+.plan-row .kracher { font-size: 12px; font-weight: 600; color: var(--warn); letter-spacing: .04em; margin-bottom: 3px; }
 .plan-row .kracher.bad-text { color: var(--bad); }
 .plan-row .by.meme { font-style: italic; }
 .ms-year { font-size: 15px; margin: 20px 0 8px; color: var(--soft); }
 .timeline { display: flex; flex-direction: column; gap: 8px; }
 .ms-row { display: grid; grid-template-columns: 112px 1fr; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--soft); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
-.ms-row:hover { border-color: #3a3a40; }
+.ms-row:hover { border-color: var(--line-strong); }
 .ms-row.accent-zitat { border-left-color: var(--zitat, #c9445c); }
 .ms-row.accent-wort { border-left-color: var(--wort, #22d3ee); }
 .ms-date { color: var(--soft); font-size: 13px; }
