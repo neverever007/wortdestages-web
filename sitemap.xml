@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-14</lastmod></url>
-  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-14</lastmod></url>
+  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-15</lastmod></url>
+  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-15</lastmod></url>
   <url><loc>https://wortdestages.eu/apps.html</loc></url>
   <url><loc>https://wortdestages.eu/meilensteine.html</loc></url>
   <url><loc>https://wortdestages.eu/wort/aberwitz/</loc><lastmod>2026-10-25</lastmod></url>
@@ -48,6 +48,7 @@
   <url><loc>https://wortdestages.eu/wort/flimmerhitze/</loc><lastmod>2026-07-31</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/frugalitaet/</loc><lastmod>2026-07-18</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/furore/</loc><lastmod>2026-08-27</lastmod></url>
+  <url><loc>https://wortdestages.eu/wort/gedenken/</loc><lastmod>2026-11-15</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/gelassenheit/</loc><lastmod>2026-09-14</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/gilbhart/</loc><lastmod>2026-10-01</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/gleichmut/</loc><lastmod>2026-09-15</lastmod></url>
@@ -200,4 +201,5 @@
   <url><loc>https://wortdestages.eu/zitat/2026-11-12/</loc><lastmod>2026-11-12</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-11-13/</loc><lastmod>2026-11-13</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-11-14/</loc><lastmod>2026-11-14</lastmod></url>
+  <url><loc>https://wortdestages.eu/zitat/2026-11-15/</loc><lastmod>2026-11-15</lastmod></url>
 </urlset>
