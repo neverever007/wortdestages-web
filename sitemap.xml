@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-23</lastmod></url>
-  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-23</lastmod></url>
+  <url><loc>https://wortdestages.eu/</loc><lastmod>2026-11-24</lastmod></url>
+  <url><loc>https://wortdestages.eu/archiv.html</loc><lastmod>2026-11-24</lastmod></url>
   <url><loc>https://wortdestages.eu/apps.html</loc></url>
   <url><loc>https://wortdestages.eu/meilensteine.html</loc></url>
   <url><loc>https://wortdestages.eu/wort/aberwitz/</loc><lastmod>2026-10-25</lastmod></url>
@@ -123,6 +123,7 @@
   <url><loc>https://wortdestages.eu/wort/renitenz/</loc><lastmod>2026-08-04</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/resonanz/</loc><lastmod>2026-09-19</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/sakrosankt/</loc><lastmod>2026-10-20</lastmod></url>
+  <url><loc>https://wortdestages.eu/wort/sammlung/</loc><lastmod>2026-11-24</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/sapperlot/</loc><lastmod>2026-08-12</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/schabernack/</loc><lastmod>2026-08-25</lastmod></url>
   <url><loc>https://wortdestages.eu/wort/schattenreich/</loc><lastmod>2026-10-09</lastmod></url>
@@ -218,4 +219,5 @@
   <url><loc>https://wortdestages.eu/zitat/2026-11-21/</loc><lastmod>2026-11-21</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-11-22/</loc><lastmod>2026-11-22</lastmod></url>
   <url><loc>https://wortdestages.eu/zitat/2026-11-23/</loc><lastmod>2026-11-23</lastmod></url>
+  <url><loc>https://wortdestages.eu/zitat/2026-11-24/</loc><lastmod>2026-11-24</lastmod></url>
 </urlset>
